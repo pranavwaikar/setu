@@ -6,7 +6,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o gateway .
 
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates curl
 WORKDIR /app
 COPY --from=builder /app/gateway /app/gateway
 EXPOSE 8080

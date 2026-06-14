@@ -204,9 +204,14 @@ func main() {
 	// ── Routing table (longest-prefix match wins) ─────────────────────────────
 	// 1. Tunnel WebSocket control-plane (CLI ↔ gateway)
 	mux.HandleFunc("/tunnel/connect", gw.handleTunnelConnect)
-	// 2. API service — strip /api prefix before forwarding to NestJS
+	// 2. Gateway health check
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+	// 3. API service — strip /api prefix before forwarding to NestJS
 	mux.Handle("/api/", gw.apiProxy())
-	// 3. Everything else → Next.js dashboard (catches / and all dashboard routes)
+	// 4. Everything else → Next.js dashboard (catches / and all dashboard routes)
 	mux.Handle("/", gw.dashboardProxy())
 
 	// Dispatch wildcard tunnel subdomain requests to handlePublicTraffic, and standard paths to mux.
