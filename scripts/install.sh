@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install.sh — Setu CLI installer for Linux and macOS
-# Usage: curl -fsSL <INSTALL_URL> | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
 set -euo pipefail
 
 GITHUB_OWNER="${GITHUB_OWNER:-pranavwaikar}"

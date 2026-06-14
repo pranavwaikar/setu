@@ -23,11 +23,8 @@ Setu is a lightweight, self-hosted tunneling CLI that proxies your local develop
 ### Linux / macOS (recommended)
 
 ```bash
-curl -fsSL <INSTALL_URL> | bash
+curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
 ```
-
-> **Note:** Replace `<INSTALL_URL>` with the raw URL to `scripts/install.sh` once a domain is configured.  
-> Until then, download directly from [GitHub Releases](https://github.com/pranavwaikar/setu/releases/latest).
 
 ### Manual Download
 
@@ -47,8 +44,7 @@ curl -fsSL <INSTALL_URL> | bash
 ### Windows (PowerShell)
 
 ```powershell
-# Coming soon — download setu_windows_amd64.zip from Releases for now.
-irm <INSTALL_URL_PS1> | iex
+irm https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.ps1 | iex
 ```
 
 ### Verify installation
