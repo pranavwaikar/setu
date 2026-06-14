@@ -139,7 +139,7 @@ function getPublicDisplayURL(subdomain) {
     
     let suffix = host;
     if (host === "127.0.0.1" || host === "localhost") {
-        suffix = "free.dev.setu.com";
+        suffix = config.tunnel_domain || "setu.helios-logic.com";
     }
     return `${subdomain}.${suffix}`;
 }
@@ -153,7 +153,8 @@ function getPublicLinkURL(subdomain) {
     
     let portStr = port ? ":" + port : "";
     if (host === "127.0.0.1" || host === "localhost") {
-        return `http://${subdomain}.lvh.me${portStr}`;
+        const suffix = config.tunnel_domain || "lvh.me";
+        return `http://${subdomain}.${suffix}${portStr}`;
     }
     return `http://${subdomain}.${host}${portStr}`;
 }
@@ -407,7 +408,7 @@ function updateSubdomainSuffix() {
     
     let suffix = "." + host;
     if (host === "127.0.0.1" || host === "localhost") {
-        suffix = ".free.dev.setu.com"; // Match mockup explicitly for local verification
+        suffix = "." + (config.tunnel_domain || "setu.helios-logic.com");
     }
     
     const suffixSpan = document.getElementById("subdomain-suffix-span");

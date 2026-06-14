@@ -212,7 +212,7 @@ func main() {
 	}
 	tunnelDomain := os.Getenv("TUNNEL_DOMAIN")
 	if tunnelDomain == "" {
-		tunnelDomain = "free.dev.setu.com"
+		tunnelDomain = "setu.helios-logic.com"
 	}
 	port := os.Getenv("PORT")
 	if port == "" {

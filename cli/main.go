@@ -566,7 +566,18 @@ func runSetupServer(cfg *Config) {
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(c)
+			tunnelDomain := os.Getenv("TUNNEL_DOMAIN")
+			if tunnelDomain == "" {
+				tunnelDomain = "setu.helios-logic.com"
+			}
+			response := struct {
+				Config
+				TunnelDomain string `json:"tunnel_domain"`
+			}{
+				Config:       *c,
+				TunnelDomain: tunnelDomain,
+			}
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
@@ -814,7 +825,10 @@ func getPublicDisplayURL(gateway, subdomain string) string {
 	host := parts[0]
 	suffix := host
 	if host == "127.0.0.1" || host == "localhost" {
-		suffix = "free.dev.setu.com"
+		suffix = os.Getenv("TUNNEL_DOMAIN")
+		if suffix == "" {
+			suffix = "setu.helios-logic.com"
+		}
 	}
 	return fmt.Sprintf("%s.%s", subdomain, suffix)
 }
