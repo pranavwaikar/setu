@@ -25,6 +25,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/yamux"
+	"github.com/pranavwaikar/setu/cli/internal/updater"
+	verinfo "github.com/pranavwaikar/setu/cli/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -357,10 +359,99 @@ func main() {
 	rootCmd.AddCommand(exposeCmd)
 	rootCmd.AddCommand(setupCmd)
 	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(updateCmd)
+	rootCmd.AddCommand(doctorCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+// ─── version command ─────────────────────────────────────────────────────────
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Show version information",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Setu CLI\n")
+		fmt.Printf("  Version:    %s\n", verinfo.Version)
+		fmt.Printf("  Commit:     %s\n", verinfo.Commit)
+		fmt.Printf("  Build Date: %s\n", verinfo.BuildDate)
+	},
+}
+
+// ─── update command ───────────────────────────────────────────────────────────
+
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update setu to the latest release from GitHub",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Checking for updates...")
+
+		release, err := updater.GetLatestRelease()
+		if err != nil {
+			log.Fatalf("Failed to fetch latest release: %v", err)
+		}
+
+		if !updater.IsUpdateAvailable(verinfo.Version, release) {
+			fmt.Printf("✔ Already up to date (version %s).\n", verinfo.Version)
+			return
+		}
+
+		fmt.Printf("New version available: %s (current: %s)\n", release.TagName, verinfo.Version)
+		fmt.Println("Starting update...")
+
+		err = updater.SelfUpdate(release, func(msg string) {
+			fmt.Println(" ", msg)
+		})
+		if err != nil {
+			log.Fatalf("Update failed: %v", err)
+		}
+
+		fmt.Printf("\n✔ Successfully updated to %s. Run 'setu version' to confirm.\n", release.TagName)
+	},
+}
+
+// ─── doctor command ───────────────────────────────────────────────────────────
+
+var doctorCmd = &cobra.Command{
+	Use:   "doctor",
+	Short: "Run diagnostics and check system health",
+	Run: func(cmd *cobra.Command, args []string) {
+		execPath, _ := os.Executable()
+		execPath, _ = filepath.EvalSymlinks(execPath)
+
+		fmt.Println("\n⚕  Setu Doctor")
+		fmt.Println("──────────────────────────────────────")
+		fmt.Printf("  Version:          %s\n", verinfo.Version)
+		fmt.Printf("  Commit:           %s\n", verinfo.Commit)
+		fmt.Printf("  Build Date:       %s\n", verinfo.BuildDate)
+		fmt.Printf("  OS:               %s\n", runtime.GOOS)
+		fmt.Printf("  Architecture:     %s\n", runtime.GOARCH)
+		fmt.Printf("  Executable Path:  %s\n", execPath)
+		fmt.Println("──────────────────────────────────────")
+
+		// GitHub connectivity check
+		fmt.Print("  GitHub API:       ")
+		if err := updater.CheckConnectivity(); err != nil {
+			fmt.Printf("✗ UNREACHABLE (%v)\n", err)
+		} else {
+			fmt.Println("✔ reachable")
+		}
+
+		// Update check
+		fmt.Print("  Update Available: ")
+		release, err := updater.GetLatestRelease()
+		if err != nil {
+			fmt.Printf("✗ could not check (%v)\n", err)
+		} else if updater.IsUpdateAvailable(verinfo.Version, release) {
+			fmt.Printf("yes — %s is available (run 'setu update')\n", release.TagName)
+		} else {
+			fmt.Println("✔ up to date")
+		}
+		fmt.Println("──────────────────────────────────────")
+	},
 }
 
 var setupCmd = &cobra.Command{

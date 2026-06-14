@@ -9,4 +9,10 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  /** Lightweight liveness probe — no DB dependency */
+  @Get('health')
+  health(): { status: string } {
+    return { status: 'ok' };
+  }
 }

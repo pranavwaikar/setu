@@ -1,0 +1,69 @@
+project: setu
+
+version: 2
+
+builds:
+  - id: setu
+    binary: setu
+    main: .
+    dir: cli
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/pranavwaikar/setu/cli/internal/version.Version={{.Version}}
+      - -X github.com/pranavwaikar/setu/cli/internal/version.Commit={{.Commit}}
+      - -X github.com/pranavwaikar/setu/cli/internal/version.BuildDate={{.Date}}
+
+archives:
+  - id: setu
+    builds:
+      - setu
+    name_template: >-
+      setu_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    formats:
+      - tar.gz
+    files:
+      - README.md
+      - scripts/install.sh
+      - scripts/verify.sh
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+release:
+  github:
+    owner: "{{ .Env.GITHUB_OWNER }}"
+    name: "{{ .Env.GITHUB_REPO }}"
+  draft: false
+  prerelease: auto
+  name_template: "Setu {{.Tag}}"
+  header: |
+    ## Setu {{.Tag}}
+
+    See [INSTALL](https://github.com/{{ .Env.GITHUB_OWNER }}/{{ .Env.GITHUB_REPO }}/blob/main/scripts/install.sh) for installation instructions.
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "Merge pull request"
+      - "Merge branch"

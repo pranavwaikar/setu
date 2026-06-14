@@ -1,22 +1,201 @@
-# Setu - Multi-Tenant Developer Tunnel Platform
+<div align="center">
 
-Setu is a self-hosted, multi-tenant developer tunneling platform that lets you expose local development servers (e.g. `127.0.0.1:3000`) to the public internet using custom subdomains (e.g. `http://app.lvh.me:8080`).
+# ⚡ Setu
+
+**Expose your local servers to the public internet — securely and instantly.**
+
+[![Release](https://img.shields.io/github/v/release/pranavwaikar/setu?style=flat-square)](https://github.com/pranavwaikar/setu/releases/latest)
+[![Go Version](https://img.shields.io/badge/go-1.24%2B-blue?style=flat-square)](https://go.dev/)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+
+</div>
 
 ---
 
-## Codebase Structure
+## What is Setu?
 
-- [api/](file:///Users/pranavwaikar/Documents/GitHub/setu/api/): NestJS backend server providing user session management, subdomain claims, and CLI validation hooks.
-- [dashboard/](file:///Users/pranavwaikar/Documents/GitHub/setu/dashboard/): Next.js web application workspace built with Tailwind CSS.
-- [gateway/](file:///Users/pranavwaikar/Documents/GitHub/setu/gateway/): High-performance Go tunnel gateway managing Yamux WebSocket sessions.
-- [cli/](file:///Users/pranavwaikar/Documents/GitHub/setu/cli/): Compiled Go binary client routing local port streams.
+Setu is a lightweight, self-hosted tunneling CLI that proxies your local development servers to publicly accessible subdomains — without relying on third-party services.
 
 ---
 
-## Documentation
+## Installation
 
-For full details on configuring, running, and deploying Setu, please refer to the following documents inside the `docs/` directory:
+### Linux / macOS (recommended)
 
-1. 📖 **[Usage & Development Guide](file:///Users/pranavwaikar/Documents/GitHub/setu/docs/usage.md)**: Steps to install prerequisites, spin up services locally, and use the compiled CLI commands.
-2. 📐 **[Technical Specification](file:///Users/pranavwaikar/Documents/GitHub/setu/docs/technical_spec.md)**: Architectural blueprints, database schemas, and multiplexing protocol designs.
+```bash
+curl -fsSL <INSTALL_URL> | bash
+```
 
+> **Note:** Replace `<INSTALL_URL>` with the raw URL to `scripts/install.sh` once a domain is configured.  
+> Until then, download directly from [GitHub Releases](https://github.com/pranavwaikar/setu/releases/latest).
+
+### Manual Download
+
+1. Visit the [Releases page](https://github.com/pranavwaikar/setu/releases/latest)
+2. Download the archive matching your OS and architecture:
+
+| OS      | Arch  | Archive                        |
+|---------|-------|--------------------------------|
+| Linux   | amd64 | `setu_linux_amd64.tar.gz`      |
+| Linux   | arm64 | `setu_linux_arm64.tar.gz`      |
+| macOS   | amd64 | `setu_darwin_amd64.tar.gz`     |
+| macOS   | arm64 | `setu_darwin_arm64.tar.gz`     |
+| Windows | amd64 | `setu_windows_amd64.zip`       |
+
+3. Extract and move the binary to a directory in your `$PATH`.
+
+### Windows (PowerShell)
+
+```powershell
+# Coming soon — download setu_windows_amd64.zip from Releases for now.
+irm <INSTALL_URL_PS1> | iex
+```
+
+### Verify installation
+
+```bash
+bash scripts/verify.sh
+```
+
+---
+
+## Quick Start
+
+### 1. Authenticate
+
+```bash
+setu login
+```
+
+### 2. Expose a local port
+
+```bash
+setu expose 3000 --subdomain myapp
+```
+
+### 3. Or use the visual setup panel
+
+```bash
+setu setup
+```
+
+Opens a local web UI to manage API keys, claim subdomains, and configure port mappings.
+
+### 4. Start all configured tunnels
+
+```bash
+setu start
+```
+
+---
+
+## Updating
+
+```bash
+setu update
+```
+
+Setu fetches the latest release from GitHub, verifies the SHA256 checksum, and atomically replaces itself — with automatic rollback if anything goes wrong.
+
+---
+
+## Diagnostics
+
+```bash
+setu doctor
+```
+
+Output includes:
+
+```text
+⚕  Setu Doctor
+──────────────────────────────────────
+  Version:          v1.2.0
+  Commit:           abc1234
+  Build Date:       2024-06-01T12:00:00Z
+  OS:               darwin
+  Architecture:     arm64
+  Executable Path:  /usr/local/bin/setu
+──────────────────────────────────────
+  GitHub API:       ✔ reachable
+  Update Available: ✔ up to date
+──────────────────────────────────────
+```
+
+---
+
+## Version
+
+```bash
+setu version
+```
+
+```text
+Setu CLI
+  Version:    v1.2.0
+  Commit:     abc1234
+  Build Date: 2024-06-01T12:00:00Z
+```
+
+---
+
+## All Commands
+
+| Command                              | Description                                    |
+|--------------------------------------|------------------------------------------------|
+| `setu login`                         | Save API key credentials                       |
+| `setu logout`                        | Remove saved credentials                       |
+| `setu expose <port> --subdomain foo` | Expose a local port via a claimed subdomain    |
+| `setu start`                         | Start all tunnels from saved config            |
+| `setu setup`                         | Open the visual configuration panel            |
+| `setu status`                        | Show current config and auth status            |
+| `setu update`                        | Update setu to the latest GitHub release       |
+| `setu doctor`                        | Run system diagnostics                         |
+| `setu version`                       | Print version, commit, and build date          |
+
+---
+
+## Configuration
+
+Setu stores its config at `~/.setu/config.json`.
+
+Environment variables:
+
+| Variable         | Description                        | Default            |
+|------------------|------------------------------------|--------------------|
+| `GITHUB_OWNER`   | GitHub repository owner            | `pranavwaikar`     |
+| `GITHUB_REPO`    | GitHub repository name             | `setu`             |
+| `API_SERVER_URL` | Override the API server URL        | inferred from config |
+
+---
+
+## Building from Source
+
+```bash
+git clone https://github.com/pranavwaikar/setu.git
+cd setu
+make build
+./setu version
+```
+
+---
+
+## Release Process
+
+Releases are fully automated via GitHub Actions + GoReleaser:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+This will:
+- Build binaries for all platforms
+- Generate SHA256 `checksums.txt`
+- Create a GitHub Release with all assets
+
+---
+
+## License
+
+MIT © Pranav Waikar

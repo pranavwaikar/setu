@@ -13,19 +13,23 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "postgres", "-d", "setu" ]
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "setu"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
     container_name: setu_api
-    command: sh -c "npx prisma db push && npm run start:prod"
+    # No inline command — the Dockerfile ENTRYPOINT (entrypoint.sh) handles
+    # waiting for Postgres, running Prisma, then starting the server.
     environment:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/setu?schema=public
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
       JWT_SECRET: supersecretjwtkey
       GATEWAY_API_TOKEN: default-gateway-secret
       PORT: 4000
@@ -36,11 +40,12 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4000/" ]
+      # Uses /health — a lightweight, DB-free liveness probe
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:4000/health"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 15s
+      retries: 6
+      start_period: 60s
 
   dashboard:
     build:
@@ -55,10 +60,11 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/" ]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 30s
 
   gateway:
     build:
@@ -76,10 +82,11 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/" ]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 30s
 
 volumes:
   pgdata:
