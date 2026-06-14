@@ -18,6 +18,13 @@
 
 Setu is a lightweight, self-hosted tunneling CLI that proxies your local development servers to publicly accessible subdomains — without relying on third-party services.
 
+### Live Demo
+
+A live instance of Setu is hosted and available at:
+👉 **[https://setu.helios-logic.com](https://setu.helios-logic.com)**
+
+Sign up for a free account, generate an API Key, claim your subdomains, and immediately tunnel your local servers.
+
 ---
 
 ## Installation

@@ -276,7 +276,7 @@ export default function Home() {
               rel="noopener noreferrer"
               className="hidden sm:inline-block"
             >
-              <img src="https://img.shields.io/github/actions/workflow/status/pranavwaikar/setu/test.yml?branch=main&label=build&style=flat-square&color=8b5cf6" alt="Build Status" />
+              <img src="https://img.shields.io/github/actions/workflow/status/pranavwaikar/setu/release.yml?label=build&style=flat-square&color=8b5cf6" alt="Build Status" />
             </a>
             <Link 
               href="/login"
@@ -325,6 +325,9 @@ export default function Home() {
               Access Dashboard
             </Link>
           </div>
+          <p className="text-zinc-500 text-xs mt-4 select-none font-medium">
+            ⚡ Always free. Claim up to 10 subdomains of your choice.
+          </p>
 
           {/* Interactive Mock Terminal */}
           <div className="w-full max-w-2xl mt-16 text-left rounded-xl border border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md overflow-hidden shadow-2xl">
@@ -387,7 +390,7 @@ export default function Home() {
               </div>
               <h3 className="text-sm font-bold text-white">Wildcard Routing</h3>
               <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-                Connect and reserve custom user subdomains under setu.helios-logic.com. Expose web apps, APIs, and hooks instantly.
+                Connect and reserve up to 10 custom user subdomains of your choice for free under setu.helios-logic.com. Expose web apps, APIs, and hooks instantly.
               </p>
             </div>
             <div className="p-6 rounded-xl border border-zinc-900 bg-zinc-950/40 text-left">
