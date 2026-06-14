@@ -251,14 +251,14 @@ export default function Home() {
 
         {/* Navigation Bar */}
         <nav className="w-full max-w-7xl mx-auto px-6 py-5 flex items-center justify-between border-b border-zinc-900 z-10">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
             <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
               <div className="h-2.5 w-2.5 bg-purple-500 rounded-full animate-pulse" />
             </div>
             <span className="font-extrabold tracking-tight text-lg bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
               Setu
             </span>
-          </div>
+          </Link>
 
           <div className="flex items-center gap-4">
             <a 
@@ -342,9 +342,9 @@ export default function Home() {
               <div>
                 <span className="text-zinc-500"># Install the lightweight binary</span>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-purple-400">$ <span className="text-zinc-200">curl -sL https://setu.helios-logic.com/install.sh | bash</span></span>
+                  <span className="text-purple-400">$ <span className="text-zinc-200">curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash</span></span>
                   <button 
-                    onClick={() => handleCopy('curl -sL https://setu.helios-logic.com/install.sh | bash', 'install-cmd')}
+                    onClick={() => handleCopy('curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash', 'install-cmd')}
                     className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors uppercase font-bold px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900/50"
                   >
                     {copiedText === 'install-cmd' ? 'Copied' : 'Copy'}
@@ -375,7 +375,7 @@ export default function Home() {
                   </button>
                 </div>
                 <div className="text-zinc-500 mt-2 text-[10px]">
-                  {"\u003e Exposing 127.0.0.1:3000 -> https://my-app-john-cena.setu.helios-logic.com"}
+                  {"\u003e Exposing 127.0.0.1:3000 -> https://my-app-jhon-cena.setu.helios-logic.com"}
                 </div>
               </div>
             </div>
@@ -431,14 +431,14 @@ export default function Home() {
       <aside className="w-64 border-r border-zinc-900 flex flex-col justify-between bg-zinc-950/80 backdrop-blur-md z-10">
         <div>
           {/* Sidebar Logo */}
-          <div className="p-6 border-b border-zinc-900 flex items-center gap-3">
+          <Link href="/" className="p-6 border-b border-zinc-900 flex items-center gap-3 hover:opacity-90 transition-opacity">
             <div className="h-7 w-7 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)]">
               <div className="h-2 w-2 bg-purple-500 rounded-full" />
             </div>
             <span className="font-bold tracking-tight text-lg bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
               Setu Tunnel
             </span>
-          </div>
+          </Link>
 
           {/* Navigation links */}
           <nav className="p-4 space-y-1">
@@ -901,10 +901,10 @@ export default function Home() {
                       </p>
                       <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
                         <span className="font-mono text-xs text-purple-400 select-all">
-                          curl -sL https://setu.helios-logic.com/install.sh | bash
+                          curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
                         </span>
                         <button
-                          onClick={() => handleCopy('curl -sL https://setu.helios-logic.com/install.sh | bash', 'cli-install')}
+                          onClick={() => handleCopy('curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash', 'cli-install')}
                           className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
                         >
                           {copiedText === 'cli-install' ? 'Copied' : 'Copy'}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Lock, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '../../lib/api';
 
@@ -45,7 +46,7 @@ export default function LoginPage() {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-md glass rounded-2xl p-8 z-10 border border-zinc-800 bg-zinc-950/80 backdrop-blur-md shadow-2xl">
-        <div className="flex flex-col items-center mb-8">
+        <Link href="/" className="flex flex-col items-center mb-8 hover:opacity-90 transition-opacity">
           <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.2)] mb-4">
             <div className="h-4 w-4 bg-purple-500 rounded-full animate-pulse" />
           </div>
@@ -55,7 +56,7 @@ export default function LoginPage() {
           <p className="text-muted-foreground text-sm mt-2">
             Sign in to manage your local tunnels
           </p>
-        </div>
+        </Link>
 
         {errorMsg && (
           <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
