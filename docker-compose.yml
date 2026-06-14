@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -29,14 +29,14 @@ services:
       JWT_SECRET: supersecretjwtkey
       GATEWAY_API_TOKEN: default-gateway-secret
       PORT: 4000
-      DASHBOARD_URL: http://127.0.0.1:3000
+      DASHBOARD_URL: http://127.0.0.1:13000
     ports:
-      - "4000:4000"
+      - "14000:4000"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4000/"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4000/" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -48,14 +48,14 @@ services:
       dockerfile: Dockerfile
     container_name: setu_dashboard
     environment:
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:14000
     ports:
-      - "3000:3000"
+      - "13000:3000"
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -71,12 +71,12 @@ services:
       TUNNEL_DOMAIN: lvh.me
       PORT: 8080
     ports:
-      - "8080:8080"
+      - "18080:8080"
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/" ]
       interval: 10s
       timeout: 5s
       retries: 3
