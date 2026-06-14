@@ -94,6 +94,35 @@ setu start
 
 ---
 
+## Multi-Tunneling & Visual Configuration (`setup` & `start`)
+
+For complex applications (like microservices or project structures with both a frontend and backend), running individual `setu expose` commands can become cumbersome. Setu provides a visual setup panel and a multi-tunnel starter to simplify this.
+
+### 1. Visual Configuration via `setu setup`
+
+Run the following command to start a local configuration web UI:
+
+```bash
+setu setup
+```
+
+This launches a beautiful, local web interface in your browser (usually at `http://localhost:4500`). In this interface, you can:
+*   **Manage API Keys**: Save your account credentials locally.
+*   **Map Ports to Subdomains**: Graphically assign local ports (e.g. `3000` or `8080`) to your claimed subdomains (e.g. `jhon-cena`).
+*   **Save and Exit**: Once you click the "Save and Exit" button, your configurations are stored securely in `~/.setu/config.json`, the local server is cleanly shut down, and your terminal control is returned.
+
+### 2. Run All Tunnels Concurrently via `setu start`
+
+Once configured, you can launch all of your tunnels at once using a single command:
+
+```bash
+setu start
+```
+
+This reads your saved mappings from `~/.setu/config.json` and runs all tunnel processes concurrently in the background, outputting unified traffic logs directly to your terminal screen.
+
+---
+
 ## Updating
 
 ```bash
