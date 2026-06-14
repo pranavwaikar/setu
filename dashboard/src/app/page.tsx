@@ -415,8 +415,44 @@ export default function Home() {
         </main>
 
         {/* Footer */}
-        <footer className="w-full border-t border-zinc-900 py-6 text-center text-xs text-zinc-500 z-10">
-          <p>© {new Date().getFullYear()} Setu. Released under the MIT License.</p>
+        <footer className="w-full border-t border-zinc-900 py-10 bg-zinc-950/40 text-center text-xs text-zinc-500 z-10">
+          <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <img src="/setu-logo.png" alt="Setu Logo" className="h-6 w-6 rounded-md" />
+                <span className="font-bold text-zinc-300">Setu</span>
+              </div>
+              <p className="text-zinc-500 text-[11px] leading-relaxed">
+                Securely and instantly expose your local servers to the public internet. Operated by Helios Logic as an open-source development demonstration.
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold text-zinc-400 uppercase tracking-wider text-[10px]">Legal & Compliance</h4>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/terms-of-use.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Terms of Use</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/privacy-policy.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Privacy Policy</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/trademark.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Trademark Policy</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/data-compliance.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Data Compliance</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/data-security.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Data Security</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/payment-compliance.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Payments</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/coppa.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">COPPA Policy</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/email-otp-verification.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Email OTP Rules</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/ai-disclosure.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">AI Disclosure</a>
+                <a href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/accessibility-audit.md" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">Accessibility</a>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-zinc-400 uppercase tracking-wider text-[10px]">Project</h4>
+              <p className="text-zinc-500 text-[11px] leading-relaxed">
+                Licensed under the <a href="https://github.com/pranavwaikar/setu/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">AGPL-3.0 License</a>. Hosted by <a href="https://helios-logic.com" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">Helios Logic</a>.
+              </p>
+              <p className="text-[10px] text-zinc-600">
+                © {new Date().getFullYear()} Setu / Helios Logic. All rights reserved.
+              </p>
+            </div>
+          </div>
         </footer>
       </div>
     );
@@ -968,6 +1004,74 @@ export default function Home() {
                         Replace `3000` with the local port of your application. Make sure the subdomain is claimed in the **Subdomains** tab.
                       </p>
                     </div>
+                  </div>
+
+                  <hr className="border-zinc-900" />
+
+                  {/* Step 4: Setup */}
+                  <div className="flex gap-4 items-start">
+                    <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
+                      4
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <h4 className="text-sm font-semibold text-zinc-200">Visual Setup Panel</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Launch a local browser-based configuration panel to manage settings visually:
+                      </p>
+                      <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
+                        <span className="font-mono text-xs text-zinc-300 select-all">
+                          setu setup
+                        </span>
+                        <button
+                          onClick={() => handleCopy('setu setup', 'cli-setup')}
+                          className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
+                        >
+                          {copiedText === 'cli-setup' ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-zinc-500">
+                        Launches a local web UI at `http://localhost:4500` to configure subdomains, port mappings, and securely save mappings.
+                      </p>
+                    </div>
+                  </div>
+
+                  <hr className="border-zinc-900" />
+
+                  {/* Step 5: Start */}
+                  <div className="flex gap-4 items-start">
+                    <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
+                      5
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <h4 className="text-sm font-semibold text-zinc-200">Start Configured Tunnels</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Run all saved tunnels simultaneously in a single terminal process:
+                      </p>
+                      <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
+                        <span className="font-mono text-xs text-zinc-300 select-all">
+                          setu start
+                        </span>
+                        <button
+                          onClick={() => handleCopy('setu start', 'cli-start')}
+                          className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
+                        >
+                          {copiedText === 'cli-start' ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-zinc-500">
+                        Launches all active tunnel processes defined in your local configuration concurrently.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Info Card on Setup & Start */}
+                  <div className="bg-purple-500/5 border border-purple-500/10 p-4 rounded-xl space-y-2 max-w-xl">
+                    <h5 className="text-xs font-semibold text-purple-400 flex items-center gap-1.5">
+                      💡 Pro Tip: Multi-Tunneling & Visual Configuration
+                    </h5>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      For advanced setups (like microservices), use <code className="text-purple-300 font-mono text-[10px] bg-purple-950/40 px-1 py-0.5 rounded">setu setup</code> to assign multiple subdomains (e.g. <code className="text-zinc-300">jhon-cena</code> for frontend, <code className="text-zinc-300">api-jhon-cena</code> for backend) to their respective local ports. Once saved, run <code className="text-purple-300 font-mono text-[10px] bg-purple-950/40 px-1 py-0.5 rounded">setu start</code> to launch all tunnels simultaneously in one terminal window.
+                    </p>
                   </div>
                 </div>
 

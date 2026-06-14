@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     // Check if already authenticated
@@ -25,7 +26,7 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !firstName || !lastName) return;
+    if (!email || !password || !firstName || !lastName || !agreed) return;
     setErrorMsg(null);
     setLoading(true);
 
@@ -128,10 +129,60 @@ export default function SignupPage() {
             />
           </div>
 
+          <div className="flex items-start gap-2.5 mt-2">
+            <input
+              id="agree-checkbox"
+              type="checkbox"
+              required
+              checked={agreed}
+              onChange={e => setAgreed(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-zinc-800 bg-zinc-900 text-purple-600 focus:ring-purple-500/30 accent-purple-600 cursor-pointer"
+            />
+            <label htmlFor="agree-checkbox" className="text-xs text-zinc-400 leading-normal cursor-pointer select-none">
+              I agree to the{' '}
+              <a
+                href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/terms-of-use.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:text-purple-300 underline"
+              >
+                Terms of Use
+              </a>
+              ,{' '}
+              <a
+                href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/privacy-policy.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:text-purple-300 underline"
+              >
+                Privacy Policy
+              </a>
+              ,{' '}
+              <a
+                href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/trademark.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:text-purple-300 underline"
+              >
+                Trademark Policy
+              </a>
+              , and{' '}
+              <a
+                href="https://github.com/pranavwaikar/setu/blob/main/legal-and-compliance/data-compliance.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:text-purple-300 underline"
+              >
+                Data Compliance Statement
+              </a>
+              . I understand that this is an open-source demo and Helios Logic holds no responsibility.
+            </label>
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm transition-colors cursor-pointer flex items-center justify-center"
+            disabled={loading || !agreed}
+            className="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800/50 disabled:text-zinc-500 disabled:cursor-not-allowed text-white font-medium text-sm transition-colors cursor-pointer flex items-center justify-center"
           >
             {loading ? (
               <RefreshCw className="h-4 w-4 animate-spin" />

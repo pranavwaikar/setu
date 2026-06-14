@@ -8,7 +8,7 @@
 
 [![Release](https://img.shields.io/github/v/release/pranavwaikar/setu?style=flat-square)](https://github.com/pranavwaikar/setu/releases/latest)
 [![Go Version](https://img.shields.io/badge/go-1.24%2B-blue?style=flat-square)](https://go.dev/)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-orange?style=flat-square)](LICENSE)
 
 </div>
 
@@ -230,6 +230,32 @@ This will:
 
 ---
 
+## Uninstalling
+
+If you need to uninstall Setu CLI, run the following commands:
+
+### Linux / macOS
+```bash
+# Remove the binary
+sudo rm -f /usr/local/bin/setu
+
+# Remove local configuration & databases
+rm -rf ~/.setu
+```
+
+### Windows (PowerShell)
+```powershell
+# Remove the binary and install folder
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\setu"
+
+# Remove local configuration & databases
+Remove-Item -Recurse -Force "$env:USERPROFILE\.setu"
+```
+
+---
+
 ## License
 
-MIT © Pranav Waikar
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See the [LICENSE](LICENSE) file for details.
+
+© Pranav Waikar
