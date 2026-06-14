@@ -46,9 +46,19 @@ export default function Home() {
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [newGeneratedKey, setNewGeneratedKey] = useState<string | null>(null);
 
+  // Dynamic Domain Detection
+  const [baseDomain, setBaseDomain] = useState('setu.helios-logic.com');
+  const [baseDomainWithPort, setBaseDomainWithPort] = useState('setu.helios-logic.com');
+  const [protocol, setProtocol] = useState('https:');
+
   // Authenticate user on load
   useEffect(() => {
     checkAuth();
+    if (typeof window !== 'undefined') {
+      setBaseDomain(window.location.hostname);
+      setBaseDomainWithPort(window.location.host);
+      setProtocol(window.location.protocol);
+    }
   }, []);
 
   // Poll active tunnels periodically if authenticated
@@ -532,12 +542,12 @@ export default function Home() {
                         <tr key={t.id} className="group hover:bg-zinc-900/10">
                           <td className="py-4 font-mono font-medium text-purple-400">
                             <a
-                              href={`http://${t.subdomain.hostname}.free.dev.setu.com:8080`}
+                              href={`${protocol}//${t.subdomain.hostname}.${baseDomainWithPort}`}
                               target="_blank"
                               rel="noreferrer"
                               className="hover:underline flex items-center gap-1.5"
                             >
-                              {t.subdomain.hostname}.free.dev.setu.com
+                              {t.subdomain.hostname}.{baseDomain}
                             </a>
                           </td>
                           <td className="py-4 text-zinc-300">
@@ -586,7 +596,7 @@ export default function Home() {
                       className="w-full pl-4 pr-36 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-sm font-mono focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all text-white"
                     />
                     <div className="absolute inset-y-0 right-3 flex items-center text-xs text-zinc-500 select-none">
-                      .free.dev.setu.com
+                      .{baseDomain}
                     </div>
                   </div>
                   <button
@@ -633,7 +643,7 @@ export default function Home() {
                         {subdomains.map(s => (
                           <tr key={s.id} className="group hover:bg-zinc-900/10">
                             <td className="py-4 font-mono font-medium text-zinc-200">
-                              {s.hostname}.free.dev.setu.com
+                              {s.hostname}.{baseDomain}
                             </td>
                             <td className="py-4">
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-green-500/10 text-green-400 border border-green-500/20">

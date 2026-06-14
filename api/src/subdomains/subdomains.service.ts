@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, ConflictException, NotFoundException }
 import { PrismaService } from '../prisma/prisma.service';
 
 const RESERVED_WORDS = new Set([
-  'admin', 'api', 'root', 'support', 'www', 'mail', 'dns', 'gateway', 'dashboard', 'helios', 'setu', 'auth'
+  'admin', 'api', 'root', 'support', 'www', 'mail', 'dns', 'gateway', 'dashboard', 'helios', 'setu', 'auth', 'status', 'docs'
 ]);
 
 @Injectable()

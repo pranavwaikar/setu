@@ -158,6 +158,41 @@ type AuthResponse struct {
 	Email    string `json:"email"`
 }
 
+var reservedSubdomains = map[string]bool{
+	"admin":     true,
+	"api":       true,
+	"root":      true,
+	"support":   true,
+	"www":       true,
+	"mail":      true,
+	"dns":       true,
+	"gateway":   true,
+	"dashboard": true,
+	"helios":    true,
+	"setu":      true,
+	"auth":      true,
+	"status":    true,
+	"docs":      true,
+}
+
+func isReservedSubdomain(subdomain string) bool {
+	return reservedSubdomains[strings.ToLower(subdomain)]
+}
+
+// resolveSubdomainFromHost parses the host header and determines which subdomain it represents.
+// In the future, this can be expanded to check database mappings for custom domains.
+func (g *Gateway) resolveSubdomainFromHost(host string) (string, bool) {
+	suffix := "." + g.tunnelDomain
+	if strings.HasSuffix(host, suffix) {
+		subdomain := strings.TrimSuffix(host, suffix)
+		return subdomain, true
+	}
+	// Future custom domain lookup logic:
+	// dbTunnelSubdomain, exists := lookupCustomDomainInDB(host)
+	// if exists { return dbTunnelSubdomain, true }
+	return "", false
+}
+
 func main() {
 	// Internal upstream targets — set by docker-compose / Coolify env vars.
 	apiServerURL := os.Getenv("API_SERVER_URL")
@@ -224,14 +259,27 @@ func main() {
 			}
 		}
 
-		// Check if the host has the subdomain suffix (e.g. abc.free.dev.setu.com -> .free.dev.setu.com)
-		suffix := "." + gw.tunnelDomain
-		if strings.HasSuffix(host, suffix) {
+		// 1. Resolve subdomain (handles standard wildcard subdomain or future custom domains)
+		subdomain, isSubdomain := gw.resolveSubdomainFromHost(host)
+
+		if isSubdomain {
+			// Check if subdomain is a reserved word
+			if isReservedSubdomain(subdomain) {
+				http.NotFound(w, r)
+				return
+			}
 			gw.handlePublicTraffic(w, r)
 			return
 		}
 
-		mux.ServeHTTP(w, r)
+		// 2. If it's the exact control plane root, or localhost/127.0.0.1, route standard paths via mux
+		if host == gw.tunnelDomain || host == "localhost" || host == "127.0.0.1" {
+			mux.ServeHTTP(w, r)
+			return
+		}
+
+		// 3. Fallback for unrecognized hosts
+		http.NotFound(w, r)
 	})
 
 	server := &http.Server{

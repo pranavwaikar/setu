@@ -1,12 +1,14 @@
 import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiKeysService } from '../api-keys/api-keys.service';
+import { SubdomainsService } from '../subdomains/subdomains.service';
 
 @Injectable()
 export class TunnelsService {
   constructor(
     private prisma: PrismaService,
     private apiKeysService: ApiKeysService,
+    private subdomainsService: SubdomainsService,
   ) {}
 
   async list(userId: string) {
@@ -106,5 +108,34 @@ export class TunnelsService {
     });
 
     return { success: true };
+  }
+
+  async registerTunnel(userId: string, subdomainName: string) {
+    if (!subdomainName) {
+      throw new BadRequestException('Subdomain name is required');
+    }
+
+    const cleanSubdomain = subdomainName.trim().toLowerCase();
+
+    // 1. Check if subdomain is already claimed
+    let subdomain = await this.prisma.subdomain.findUnique({
+      where: { hostname: cleanSubdomain },
+    });
+
+    if (!subdomain) {
+      // If not claimed at all, claim it for this user
+      subdomain = await this.subdomainsService.claim(userId, cleanSubdomain);
+    } else if (subdomain.userId !== userId) {
+      // If claimed by someone else, throw error
+      throw new BadRequestException('Subdomain is already claimed by another user');
+    }
+
+    const domainSuffix = process.env.PUBLIC_DOMAIN || 'https://setu.helios-logic.com';
+    let cleanDomain = domainSuffix.replace(/^https?:\/\//, '');
+    const scheme = domainSuffix.startsWith('http://') ? 'http' : 'https';
+
+    return {
+      publicUrl: `${scheme}://${cleanSubdomain}.${cleanDomain}`,
+    };
   }
 }

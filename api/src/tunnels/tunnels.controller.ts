@@ -14,6 +14,13 @@ export class TunnelsController {
     return this.tunnelsService.list(user.id);
   }
 
+  // User endpoint: register a tunnel subdomain and get its public URL
+  @Post('tunnels')
+  @UseGuards(AuthGuard)
+  async register(@CurrentUser() user: any, @Body('subdomain') subdomain: string) {
+    return this.tunnelsService.registerTunnel(user.id, subdomain);
+  }
+
   // Internal Gateway endpoint: authenticate tunnel connection
   @Post('internal/gateway/auth')
   async authGateway(
