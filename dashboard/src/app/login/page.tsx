@@ -47,9 +47,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md glass rounded-2xl p-8 z-10 border border-zinc-800 bg-zinc-950/80 backdrop-blur-md shadow-2xl">
         <Link href="/" className="flex flex-col items-center mb-8 hover:opacity-90 transition-opacity">
-          <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.2)] mb-4">
-            <div className="h-4 w-4 bg-purple-500 rounded-full animate-pulse" />
-          </div>
+          <img src="/setu-logo.png" alt="Setu Logo" className="h-12 w-12 rounded-xl object-contain mb-4" />
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-purple-400 via-violet-400 to-indigo-400 bg-clip-text text-transparent">
             Welcome Back
           </h1>

@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Setu | Developer Tunnel Platform",
   description: "Expose your local servers to the internet instantly. Secure, multi-tenant self-hosted developer platform.",
+  icons: {
+    icon: "/setu-favicon.png",
+  },
 };
 
 export default function RootLayout({

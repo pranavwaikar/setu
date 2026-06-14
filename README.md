@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./dashboard/public/setu-logo.png" alt="Setu Logo" width="100" height="100" style="border-radius: 24px; margin-bottom: 20px;" />
+
 # ⚡ Setu
 
 **Expose your local servers to the public internet — securely and instantly.**
