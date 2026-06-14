@@ -49,7 +49,7 @@ export default function SignupPage() {
 
       <div className="w-full max-w-md glass rounded-2xl p-8 z-10 border border-zinc-800 bg-zinc-950/80 backdrop-blur-md shadow-2xl">
         <Link href="/" className="flex flex-col items-center mb-8 hover:opacity-90 transition-opacity">
-          <img src="/setu-logo.png" alt="Setu Logo" className="h-12 w-12 rounded-xl object-contain mb-4" />
+          <img src="/setu-logo.png" alt="Setu Logo" className="h-20 w-20 rounded-2xl object-contain mb-4 shadow-[0_0_20px_rgba(168,85,247,0.3)]" />
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-purple-400 via-violet-400 to-indigo-400 bg-clip-text text-transparent">
             Create Account
           </h1>

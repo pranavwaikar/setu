@@ -251,9 +251,9 @@ export default function Home() {
 
         {/* Navigation Bar */}
         <nav className="w-full max-w-7xl mx-auto px-6 py-5 flex items-center justify-between border-b border-zinc-900 z-10">
-          <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <img src="/setu-logo.png" alt="Setu Logo" className="h-8 w-8 rounded-lg object-contain" />
-            <span className="font-extrabold tracking-tight text-lg bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent font-sans">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <img src="/setu-logo.png" alt="Setu Logo" className="h-12 w-12 rounded-xl object-contain" />
+            <span className="font-extrabold tracking-tight text-2xl bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent font-sans">
               Setu
             </span>
           </Link>
@@ -429,9 +429,9 @@ export default function Home() {
       <aside className="w-64 border-r border-zinc-900 flex flex-col justify-between bg-zinc-950/80 backdrop-blur-md z-10">
         <div>
           {/* Sidebar Logo */}
-          <Link href="/" className="p-6 border-b border-zinc-900 flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <img src="/setu-logo.png" alt="Setu Logo" className="h-7 w-7 rounded-md object-contain" />
-            <span className="font-bold tracking-tight text-lg bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+          <Link href="/" className="p-6 border-b border-zinc-900 flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <img src="/setu-logo.png" alt="Setu Logo" className="h-10 w-10 rounded-lg object-contain" />
+            <span className="font-bold tracking-tight text-xl bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
               Setu Tunnel
             </span>
           </Link>
