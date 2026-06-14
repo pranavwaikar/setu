@@ -33,7 +33,7 @@ services:
       JWT_SECRET: supersecretjwtkey
       GATEWAY_API_TOKEN: default-gateway-secret
       PORT: 4000
-      PUBLIC_DOMAIN: http://localhost:18080
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-https://setu.helios-logic.com}
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,7 +72,7 @@ services:
       INTERNAL_API_URL: http://api:4000
       DASHBOARD_URL: http://dashboard:3000
       GATEWAY_API_TOKEN: default-gateway-secret
-      TUNNEL_DOMAIN: lvh.me
+      TUNNEL_DOMAIN: ${TUNNEL_DOMAIN:-setu.helios-logic.com}
       PORT: 8080
     ports:
       - "18080:8080"

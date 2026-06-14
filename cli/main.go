@@ -805,8 +805,11 @@ func runSetupServer(cfg *Config) {
 func buildWebSocketURL(gateway, subdomain, port string) string {
 	rawURL := gateway
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") && !strings.HasPrefix(rawURL, "ws://") && !strings.HasPrefix(rawURL, "wss://") {
-		// Default to ws
-		rawURL = "ws://" + rawURL
+		if rawURL == "setu.helios-logic.com" {
+			rawURL = "wss://" + rawURL
+		} else {
+			rawURL = "ws://" + rawURL
+		}
 	}
 
 	u, err := url.Parse(rawURL)
