@@ -1,7 +1,9 @@
 FROM node:20-alpine
 
-# Install curl (for healthchecks) and netcat (for DB readiness check in entrypoint)
-RUN apk add --no-cache curl netcat-openbsd
+# openssl        — required by Prisma v5 at runtime on Alpine
+# postgresql-client — provides pg_isready for reliable DB readiness checking
+# curl           — used by Docker healthcheck (curl -f /health)
+RUN apk add --no-cache openssl postgresql-client curl
 
 WORKDIR /app
 
