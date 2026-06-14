@@ -21,9 +21,15 @@
                     <p>Local Config Panel</p>
                 </div>
             </div>
-            <div class="status-badge">
-                <span id="header-status-dot" class="status-dot"></span>
-                <span id="header-status-text">Checking API Connection...</span>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="status-badge">
+                    <span id="header-status-dot" class="status-dot"></span>
+                    <span id="header-status-text">Checking API Connection...</span>
+                </div>
+                <button class="btn-exit" onclick="saveAndExit()">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    Save & Exit
+                </button>
             </div>
         </header>
 
@@ -103,6 +109,13 @@
     <!-- TOAST NOTIFICATION -->
     <div id="toast" class="toast">
         <span id="toast-message">Configuration saved successfully!</span>
+    </div>
+
+    <!-- SHUTDOWN OVERLAY -->
+    <div id="shutdown-overlay" class="shutdown-overlay" style="display: none;">
+        <h2>Setup Session Closed</h2>
+        <p>The local setup server has been shut down successfully.</p>
+        <p style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted);">You can now safely close this browser tab and return to your terminal.</p>
     </div>
 
     <script src="/app.js"></script>

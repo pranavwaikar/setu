@@ -788,8 +788,28 @@ func runSetupServer(cfg *Config) {
 		io.Copy(w, resp.Body)
 	})
 
+	var server *http.Server
+
+	// POST /api/exit
+	mux.HandleFunc("/api/exit", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"success": true})
+
+		// Gracefully shut down the server in a goroutine so response completes
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			if server != nil {
+				server.Close()
+			}
+		}()
+	})
+
 	// 4. Start HTTP Server
-	server := &http.Server{
+	server = &http.Server{
 		Handler: mux,
 	}
 

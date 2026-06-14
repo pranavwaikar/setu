@@ -437,3 +437,60 @@ function updateSubdomainSuffix() {
 
 // Initialize UI
 init();
+
+// Ping local server periodically to detect Ctrl+C shutdown
+let isShuttingDown = false;
+setInterval(async () => {
+    if (isShuttingDown) return;
+    try {
+        const resp = await fetch('/api/config');
+        if (!resp.ok) {
+            showShutdownOverlay();
+        }
+    } catch (err) {
+        showShutdownOverlay();
+    }
+}, 3000);
+
+function showShutdownOverlay() {
+    isShuttingDown = true;
+    const overlay = document.getElementById('shutdown-overlay');
+    if (overlay && overlay.style.display !== 'flex') {
+        overlay.style.display = 'flex';
+        setTimeout(() => {
+            window.close();
+        }, 500);
+    }
+}
+
+async function saveAndExit() {
+    isShuttingDown = true;
+    try {
+        // Collect current port mappings from inputs before saving
+        const inputs = document.querySelectorAll('.port-input');
+        const newMappings = [];
+        inputs.forEach(input => {
+            const subdomain = input.getAttribute('data-subdomain');
+            const port = input.value.trim();
+            if (port) {
+                newMappings.push({ subdomain, port });
+            }
+        });
+        config.port_mappings = newMappings;
+
+        await saveLocalConfig();
+        showToast("Configuration saved. Exiting...", "success");
+        
+        setTimeout(async () => {
+            try {
+                await fetch('/api/exit', { method: 'POST' });
+            } catch (err) {
+                // Server closed
+            }
+            showShutdownOverlay();
+        }, 800);
+    } catch (err) {
+        showToast("Failed to save configuration before exiting", "error");
+        isShuttingDown = false;
+    }
+}
