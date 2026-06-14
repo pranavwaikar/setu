@@ -115,7 +115,20 @@ export class TunnelsService {
       throw new BadRequestException('Subdomain name is required');
     }
 
-    const cleanSubdomain = subdomainName.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+
+    const cleanFirst = (user?.firstName || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const cleanLast = (user?.lastName || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const nameSuffix = [cleanFirst, cleanLast].filter(Boolean).join('-');
+    const suffix = nameSuffix ? `-${nameSuffix}` : '';
+
+    let cleanSubdomain = subdomainName.trim().toLowerCase();
+    if (suffix && !cleanSubdomain.endsWith(suffix)) {
+      cleanSubdomain = `${cleanSubdomain}${suffix}`;
+    }
 
     // 1. Check if subdomain is already claimed
     let subdomain = await this.prisma.subdomain.findUnique({
@@ -135,7 +148,7 @@ export class TunnelsService {
     const scheme = domainSuffix.startsWith('http://') ? 'http' : 'https';
 
     return {
-      publicUrl: `${scheme}://${cleanSubdomain}.${cleanDomain}`,
+      publicUrl: `${scheme}://${subdomain.hostname}.${cleanDomain}`,
     };
   }
 }

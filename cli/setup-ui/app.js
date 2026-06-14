@@ -1,5 +1,7 @@
 let config = { api_key: "", gateway: "", port_mappings: [] };
 let claimedSubdomains = [];
+let userFirstName = "";
+let userLastName = "";
 
 async function init() {
     try {
@@ -51,6 +53,9 @@ async function updateStatus() {
             if (validationResult.valid) {
                 statusDot.className = "status-dot active";
                 statusText.innerText = 'Connected: ' + validationResult.email;
+                userFirstName = validationResult.firstName || "";
+                userLastName = validationResult.lastName || "";
+                updateSubdomainSuffix();
                 
                 // Valid key, fetch subdomains
                 await fetchSubdomains();
@@ -419,9 +424,14 @@ function updateSubdomainSuffix() {
         suffix = "." + (config.tunnel_domain || "setu.helios-logic.com");
     }
     
+    const cleanFirst = userFirstName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const cleanLast = userLastName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const nameSuffix = [cleanFirst, cleanLast].filter(Boolean).join('-');
+    const nameSuffixStr = nameSuffix ? `-${nameSuffix}` : '';
+    
     const suffixSpan = document.getElementById("subdomain-suffix-span");
     if (suffixSpan) {
-        suffixSpan.innerText = suffix;
+        suffixSpan.innerText = nameSuffixStr + suffix;
     }
 }
 

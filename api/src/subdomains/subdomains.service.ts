@@ -17,8 +17,22 @@ export class SubdomainsService {
   }
 
   async claim(userId: string, hostname: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+
+    const cleanFirst = (user?.firstName || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const cleanLast = (user?.lastName || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const nameSuffix = [cleanFirst, cleanLast].filter(Boolean).join('-');
+    const suffix = nameSuffix ? `-${nameSuffix}` : '';
+
+    let cleanHostname = hostname.trim().toLowerCase();
+    if (suffix && !cleanHostname.endsWith(suffix)) {
+      cleanHostname = `${cleanHostname}${suffix}`;
+    }
+
     // 1. Format validation
-    const cleanHostname = hostname.trim().toLowerCase();
     const hostnameRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
     if (!hostnameRegex.test(cleanHostname)) {
       throw new BadRequestException(

@@ -3,6 +3,8 @@ export interface User {
   email: string;
   plan: 'FREE' | 'PRO';
   createdAt: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface Subdomain {
@@ -67,10 +69,10 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
 export const api = {
   // Auth
-  async register(email: string, password: string): Promise<User> {
+  async register(email: string, password: string, firstName?: string, lastName?: string): Promise<User> {
     return apiFetch<User>('auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, firstName, lastName }),
     });
   },
 

@@ -10,7 +10,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(email: string, password: string) {
+  async register(email: string, password: string, firstName?: string, lastName?: string) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -25,12 +25,16 @@ export class AuthService {
       data: {
         email,
         passwordHash,
+        firstName,
+        lastName,
       },
       select: {
         id: true,
         email: true,
         plan: true,
         createdAt: true,
+        firstName: true,
+        lastName: true,
       },
     });
 
@@ -60,6 +64,8 @@ export class AuthService {
         email: user.email,
         plan: user.plan,
         createdAt: user.createdAt,
+        firstName: user.firstName,
+        lastName: user.lastName,
       },
       token,
     };

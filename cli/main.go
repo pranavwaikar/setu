@@ -656,12 +656,16 @@ func runSetupServer(cfg *Config) {
 		w.Header().Set("Content-Type", "application/json")
 		if resp.StatusCode == http.StatusOK {
 			var user struct {
-				Email string `json:"email"`
+				Email     string `json:"email"`
+				FirstName string `json:"firstName"`
+				LastName  string `json:"lastName"`
 			}
 			json.NewDecoder(resp.Body).Decode(&user)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"valid": true,
-				"email": user.Email,
+				"valid":     true,
+				"email":     user.Email,
+				"firstName": user.FirstName,
+				"lastName":  user.LastName,
 			})
 		} else {
 			json.NewEncoder(w).Encode(map[string]interface{}{
