@@ -156,5 +156,3 @@ In a production environment (such as on a Coolify server or virtual machine), yo
    ```text
    *.yourdomain.com  ->  YOUR_SERVER_IP
    ```
-   
-se_d05a2a11afe7abbe200a57be17e039d1aa4e4140c301b920
