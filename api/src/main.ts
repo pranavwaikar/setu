@@ -15,9 +15,10 @@ process.on('uncaughtException', (err) => {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for dashboard integration
+  // All traffic arrives via the gateway (same-origin).
+  // CORS origin is the single public domain; keeps local dev working too.
   app.enableCors({
-    origin: process.env.DASHBOARD_URL ?? 'http://127.0.0.1:3000',
+    origin: process.env.PUBLIC_DOMAIN ?? 'http://localhost:3000',
     credentials: true,
   });
 

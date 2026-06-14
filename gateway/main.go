@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -99,6 +100,15 @@ func NewRegistry() *Registry {
 	}
 }
 
+// mustParseURL parses a URL string and panics on error (used for static config values).
+func mustParseURL(raw string) *url.URL {
+	u, err := url.Parse(raw)
+	if err != nil {
+		panic(fmt.Sprintf("invalid URL %q: %v", raw, err))
+	}
+	return u
+}
+
 func (r *Registry) Register(subdomain string, session *yamux.Session, tunnelId string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -132,6 +142,7 @@ type Gateway struct {
 	apiServerURL string
 	gatewayToken string
 	tunnelDomain string
+	dashboardURL string
 }
 
 type AuthRequest struct {
@@ -148,9 +159,17 @@ type AuthResponse struct {
 }
 
 func main() {
+	// Internal upstream targets — set by docker-compose / Coolify env vars.
 	apiServerURL := os.Getenv("API_SERVER_URL")
 	if apiServerURL == "" {
-		apiServerURL = "http://127.0.0.1:4000"
+		apiServerURL = os.Getenv("INTERNAL_API_URL")
+	}
+	if apiServerURL == "" {
+		apiServerURL = "http://api:4000"
+	}
+	dashboardURL := os.Getenv("DASHBOARD_URL")
+	if dashboardURL == "" {
+		dashboardURL = "http://dashboard:3000"
 	}
 	gatewayToken := os.Getenv("GATEWAY_API_TOKEN")
 	if gatewayToken == "" {
@@ -177,20 +196,48 @@ func main() {
 		apiServerURL: apiServerURL,
 		gatewayToken: gatewayToken,
 		tunnelDomain: tunnelDomain,
+		dashboardURL: dashboardURL,
 	}
 
 	mux := http.NewServeMux()
+
+	// ── Routing table (longest-prefix match wins) ─────────────────────────────
+	// 1. Tunnel WebSocket control-plane (CLI ↔ gateway)
 	mux.HandleFunc("/tunnel/connect", gw.handleTunnelConnect)
-	mux.HandleFunc("/", gw.handlePublicTraffic)
+	// 2. API service — strip /api prefix before forwarding to NestJS
+	mux.Handle("/api/", gw.apiProxy())
+	// 3. Everything else → Next.js dashboard (catches / and all dashboard routes)
+	mux.Handle("/", gw.dashboardProxy())
+
+	// Dispatch wildcard tunnel subdomain requests to handlePublicTraffic, and standard paths to mux.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := r.Host
+		if strings.Contains(host, ":") {
+			h, _, err := net.SplitHostPort(host)
+			if err == nil {
+				host = h
+			}
+		}
+
+		// Check if the host has the subdomain suffix (e.g. abc.free.dev.setu.com -> .free.dev.setu.com)
+		suffix := "." + gw.tunnelDomain
+		if strings.HasSuffix(host, suffix) {
+			gw.handlePublicTraffic(w, r)
+			return
+		}
+
+		mux.ServeHTTP(w, r)
+	})
 
 	server := &http.Server{
 		Addr:    ":" + port,
-		Handler: mux,
+		Handler: handler,
 	}
 
-	log.Printf("Gateway server is running on port %s", port)
-	log.Printf("Routing target suffix: .%s", tunnelDomain)
-	log.Printf("API server target: %s", apiServerURL)
+	log.Printf("Gateway listening on port %s", port)
+	log.Printf("  /api/*  → %s", apiServerURL)
+	log.Printf("  /*      → %s", dashboardURL)
+	log.Printf("  tunnel domain: .%s", tunnelDomain)
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server exited with error: %v", err)
@@ -259,7 +306,54 @@ func (g *Gateway) handleTunnelConnect(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// handlePublicTraffic proxies wildcard subdomain HTTP requests to their corresponding Yamux streams.
+// apiProxy returns an http.Handler that strips the /api prefix and reverse-proxies
+// the request to the internal NestJS API service.
+func (g *Gateway) apiProxy() http.Handler {
+	target := mustParseURL(g.apiServerURL)
+	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		// Strip /api prefix — NestJS expects /auth/login not /api/auth/login
+		req.URL.Path = strings.TrimPrefix(req.URL.Path, "/api")
+		if req.URL.Path == "" {
+			req.URL.Path = "/"
+		}
+		req.URL.RawPath = strings.TrimPrefix(req.URL.RawPath, "/api")
+		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Header.Set("X-Forwarded-Proto", "https")
+	}
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("[API Proxy Error] %s %s: %v", r.Method, r.URL.Path, err)
+		w.WriteHeader(http.StatusBadGateway)
+		fmt.Fprintf(w, `{"error":"api unavailable","detail":%q}`, err.Error())
+	}
+	return proxy
+}
+
+// dashboardProxy returns an http.Handler that reverse-proxies all remaining
+// requests to the internal Next.js dashboard service.
+func (g *Gateway) dashboardProxy() http.Handler {
+	target := mustParseURL(g.dashboardURL)
+	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Header.Set("X-Forwarded-Proto", "https")
+	}
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("[Dashboard Proxy Error] %s %s: %v", r.Method, r.URL.Path, err)
+		w.WriteHeader(http.StatusBadGateway)
+		fmt.Fprintf(w, "Dashboard unavailable: %v", err)
+	}
+	return proxy
+}
+
+// handlePublicTraffic handles wildcard-subdomain tunnel traffic (e.g. abc.free.dev.setu.com).
+// Root-domain traffic is handled by dashboardProxy / apiProxy above.
 func (g *Gateway) handlePublicTraffic(w http.ResponseWriter, r *http.Request) {
 	host := r.Host
 	// Remove port from host if present
@@ -270,17 +364,15 @@ func (g *Gateway) handlePublicTraffic(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Identify subdomain. Domain is free.dev.setu.com
-	// If host is abc.free.dev.setu.com, subdomain is abc.
-	var subdomain string
+	// Identify subdomain: abc.free.dev.setu.com → "abc"
 	suffix := "." + g.tunnelDomain
-	if strings.HasSuffix(host, suffix) {
-		subdomain = strings.TrimSuffix(host, suffix)
-	} else {
-		// If accessing gateway directly, show a landing status page
-		g.showLandingPage(w, r)
+	if !strings.HasSuffix(host, suffix) {
+		// Not a tunnel subdomain — should not reach here since /api/ and / are
+		// handled before this, but guard just in case.
+		http.NotFound(w, r)
 		return
 	}
+	subdomain := strings.TrimSuffix(host, suffix)
 
 	session, ok := g.registry.Get(subdomain)
 	if !ok {
@@ -288,13 +380,12 @@ func (g *Gateway) handlePublicTraffic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Setup Reverse Proxy routing through Yamux Session
+	// Reverse-proxy through the Yamux session to the CLI client's local server.
 	director := func(req *http.Request) {
 		req.URL.Scheme = "http"
-		req.URL.Host = "127.0.0.1" // Target host inside user's local server
-		// Pass original host headers
+		req.URL.Host = "127.0.0.1"
 		req.Header.Set("X-Forwarded-Host", r.Host)
-		req.Header.Set("X-Forwarded-Proto", "http")
+		req.Header.Set("X-Forwarded-Proto", "https")
 	}
 
 	proxy := &httputil.ReverseProxy{
@@ -306,7 +397,7 @@ func (g *Gateway) handlePublicTraffic(w http.ResponseWriter, r *http.Request) {
 		},
 		ErrorLog: log.New(io.Discard, "", 0),
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			log.Printf("[Proxy Error] %s -> %v", subdomain, err)
+			log.Printf("[Tunnel Proxy Error] %s -> %v", subdomain, err)
 			w.WriteHeader(http.StatusBadGateway)
 			fmt.Fprintf(w, "Setu Gateway Proxy Error: %v", err)
 		},
@@ -380,30 +471,6 @@ func (g *Gateway) notifyDisconnect(tunnelId string) {
 		return
 	}
 	defer resp.Body.Close()
-}
-
-func (g *Gateway) showLandingPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`<!DOCTYPE html>
-<html>
-<head>
-    <title>Setu Tunnel Gateway</title>
-    <style>
-        body { background: #09090b; color: #fafafa; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); text-align: center; max-width: 400px; box-shadow: 0 4px 30px rgba(0,0,0,0.5); }
-        h1 { margin: 0; font-size: 1.8rem; background: linear-gradient(to right, #a855f7, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        p { color: #a1a1aa; font-size: 0.9rem; margin-top: 1rem; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>Setu Gateway Active</h1>
-        <p>This entrypoint serves public tunnel routing and WebSocket tunnel control planes.</p>
-        <p style="font-size: 0.8rem; color: #71717a;">Please connect your Setu CLI to start exposing local services.</p>
-    </div>
-</body>
-</html>`))
 }
 
 func (g *Gateway) showTunnelOffline(w http.ResponseWriter, subdomain string) {

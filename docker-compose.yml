@@ -33,9 +33,7 @@ services:
       JWT_SECRET: supersecretjwtkey
       GATEWAY_API_TOKEN: default-gateway-secret
       PORT: 4000
-      DASHBOARD_URL: http://127.0.0.1:13000
-    ports:
-      - "14000:4000"
+      PUBLIC_DOMAIN: http://localhost:18080
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,9 +51,7 @@ services:
       dockerfile: Dockerfile
     container_name: setu_dashboard
     environment:
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:14000
-    ports:
-      - "13000:3000"
+      INTERNAL_API_URL: http://api:4000
     depends_on:
       api:
         condition: service_healthy
@@ -73,6 +69,8 @@ services:
     container_name: setu_gateway
     environment:
       API_SERVER_URL: http://api:4000
+      INTERNAL_API_URL: http://api:4000
+      DASHBOARD_URL: http://dashboard:3000
       GATEWAY_API_TOKEN: default-gateway-secret
       TUNNEL_DOMAIN: lvh.me
       PORT: 8080
