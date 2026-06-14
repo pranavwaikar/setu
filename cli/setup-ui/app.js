@@ -9,7 +9,15 @@ async function init() {
             config = await configResp.json();
             if (!config.port_mappings) config.port_mappings = [];
             document.getElementById('api-key-input').value = config.api_key || '';
-            document.getElementById('gateway-input').value = config.gateway || '127.0.0.1:8080';
+            document.getElementById('gateway-input').value = config.gateway || config.tunnel_domain || 'setu.helios-logic.com';
+            
+            // Dynamically set dashboard link
+            const dashboardLink = document.getElementById('dashboard-link');
+            if (dashboardLink && config.dashboard_url) {
+                dashboardLink.href = config.dashboard_url;
+                dashboardLink.innerText = config.dashboard_url;
+            }
+            
             updateSubdomainSuffix();
         }
         

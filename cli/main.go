@@ -51,12 +51,26 @@ func getConfigPath() string {
 	return filepath.Join(dir, "config.json")
 }
 
+func getDefaultGateway() string {
+	g := os.Getenv("GATEWAY_URL")
+	if g == "" {
+		g = os.Getenv("PUBLIC_DOMAIN")
+	}
+	if g == "" {
+		g = "setu.helios-logic.com"
+	}
+	g = strings.TrimPrefix(g, "https://")
+	g = strings.TrimPrefix(g, "http://")
+	g = strings.TrimSuffix(g, "/")
+	return g
+}
+
 func loadConfig() (*Config, error) {
 	path := getConfigPath()
 	file, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &Config{Gateway: "127.0.0.1:8080"}, nil
+			return &Config{Gateway: getDefaultGateway()}, nil
 		}
 		return nil, err
 	}
@@ -68,7 +82,7 @@ func loadConfig() (*Config, error) {
 	}
 
 	if cfg.Gateway == "" {
-		cfg.Gateway = "127.0.0.1:8080"
+		cfg.Gateway = getDefaultGateway()
 	}
 	return &cfg, nil
 }
@@ -471,23 +485,20 @@ func getAPIServerURL(cfg *Config) string {
 	if envAPI := os.Getenv("API_SERVER_URL"); envAPI != "" {
 		return envAPI
 	}
-	// Infer from gateway
 	gw := cfg.Gateway
 	if gw == "" {
-		gw = "127.0.0.1:8080"
+		gw = getDefaultGateway()
 	}
 	if !strings.HasPrefix(gw, "http://") && !strings.HasPrefix(gw, "https://") {
-		gw = "http://" + gw
-	}
-	u, err := url.Parse(gw)
-	if err == nil {
-		host, _, err2 := net.SplitHostPort(u.Host)
-		if err2 == nil {
-			return u.Scheme + "://" + host + ":4000"
+		// Use HTTPS for production domain, HTTP otherwise
+		if gw == "setu.helios-logic.com" {
+			gw = "https://" + gw
+		} else {
+			gw = "http://" + gw
 		}
-		return u.Scheme + "://" + u.Host + ":4000"
 	}
-	return "http://127.0.0.1:4000"
+	gw = strings.TrimSuffix(gw, "/")
+	return gw + "/api"
 }
 
 func openBrowser(url string) {
@@ -570,12 +581,21 @@ func runSetupServer(cfg *Config) {
 			if tunnelDomain == "" {
 				tunnelDomain = "setu.helios-logic.com"
 			}
+			dashboardURL := os.Getenv("DASHBOARD_URL")
+			if dashboardURL == "" {
+				dashboardURL = os.Getenv("PUBLIC_DOMAIN")
+			}
+			if dashboardURL == "" {
+				dashboardURL = "https://setu.helios-logic.com"
+			}
 			response := struct {
 				Config
 				TunnelDomain string `json:"tunnel_domain"`
+				DashboardURL string `json:"dashboard_url"`
 			}{
 				Config:       *c,
 				TunnelDomain: tunnelDomain,
+				DashboardURL: dashboardURL,
 			}
 			json.NewEncoder(w).Encode(response)
 			return
