@@ -1,0 +1,72 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum SubdomainStatus {
+  ACTIVE
+  RESERVED
+  SUSPENDED
+}
+
+enum TunnelStatus {
+  ONLINE
+  OFFLINE
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique
+  passwordHash String?     @map("password_hash")
+  plan         Plan        @default(FREE)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  subdomains   Subdomain[]
+  tunnels      Tunnel[]
+  apiKeys      ApiKey[]
+
+  @@map("users")
+}
+
+model Subdomain {
+  id        String          @id @default(uuid()) @db.Uuid
+  userId    String          @map("user_id") @db.Uuid
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hostname  String          @unique
+  status    SubdomainStatus @default(ACTIVE)
+  createdAt DateTime        @default(now()) @map("created_at")
+  tunnels   Tunnel[]
+
+  @@map("subdomains")
+}
+
+model Tunnel {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subdomainId String       @map("subdomain_id") @db.Uuid
+  subdomain   Subdomain    @relation(fields: [subdomainId], references: [id], onDelete: Cascade)
+  localPort   Int          @map("local_port")
+  status      TunnelStatus @default(OFFLINE)
+  connectedAt DateTime?    @map("connected_at")
+
+  @@map("tunnels")
+}
+
+model ApiKey {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyHash   String   @map("key_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("api_keys")
+}

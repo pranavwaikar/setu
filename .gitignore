@@ -1,0 +1,58 @@
+# Dependency Directories
+node_modules/
+/api/node_modules/
+/dashboard/node_modules/
+
+# Next.js Build Outputs
+/dashboard/.next/
+/dashboard/out/
+/dashboard/build/
+
+# NestJS Build Outputs
+/api/dist/
+/api/build/
+
+# Go Binaries and Build Artifacts
+/gateway/gateway-bin
+/cli/helios-bin
+/cli/cli-bin
+/gateway/gateway
+/cli/cli
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Local Databases and Logs
+*.db
+*.db-journal
+/api/prisma/dev.db
+/api/prisma/dev.db-journal
+/api/dev.db
+/api/dev.db-journal
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+/api/.env
+/dashboard/.env
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+api/node_modules
