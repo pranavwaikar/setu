@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Terminal,
   Globe,
@@ -240,123 +241,182 @@ export default function Home() {
     );
   }
 
-  // Unauthenticated screen
+  // Unauthenticated Developer Landing Page
   if (authStatus === 'unauthenticated') {
     return (
-      <div className="flex-1 flex items-center justify-center p-4 bg-[#09090b]">
+      <div className="flex-1 flex flex-col bg-[#09090b] text-[#fafafa] relative min-h-screen overflow-y-auto">
         {/* Glow circles */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="w-full max-w-md glass rounded-2xl p-8 z-10">
-          <div className="flex flex-col items-center mb-8">
-            <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.2)] mb-4">
-              <div className="h-4 w-4 bg-purple-500 rounded-full animate-pulse" />
+        {/* Navigation Bar */}
+        <nav className="w-full max-w-7xl mx-auto px-6 py-5 flex items-center justify-between border-b border-zinc-900 z-10">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+              <div className="h-2.5 w-2.5 bg-purple-500 rounded-full animate-pulse" />
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-purple-400 via-violet-400 to-indigo-400 bg-clip-text text-transparent">
-              Setu Tunnel
-            </h1>
-            <p className="text-muted-foreground text-sm mt-2">
-              {authMode === 'login' ? 'Sign in to manage your local tunnels' : 'Create an account to start exposing local services'}
-            </p>
+            <span className="font-extrabold tracking-tight text-lg bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+              Setu
+            </span>
           </div>
 
-          {errorMsg && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            <a 
+              href="https://github.com/pranavwaikar/setu" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold transition-all hover:text-white text-zinc-300"
+            >
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+              GitHub
+            </a>
+            <a 
+              href="https://github.com/pranavwaikar/setu/actions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-block"
+            >
+              <img src="https://img.shields.io/github/actions/workflow/status/pranavwaikar/setu/test.yml?branch=main&label=build&style=flat-square&color=8b5cf6" alt="Build Status" />
+            </a>
+            <Link 
+              href="/login"
+              className="text-xs font-semibold text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link 
+              href="/signup"
+              className="text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] shrink-0"
+            >
+              Sign Up
+            </Link>
+          </div>
+        </nav>
 
-          {successMsg && (
-            <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
+        {/* Hero Section */}
+        <main className="w-full max-w-5xl mx-auto px-6 py-20 flex flex-col items-center justify-center text-center z-10 flex-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-medium mb-8">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+            </span>
+            <span>Open Source Dev Tunnel CLI</span>
+          </div>
 
-          <form onSubmit={handleAuthSubmit} className="space-y-4">
-            {authMode === 'register' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={firstName}
-                    onChange={e => setFirstName(e.target.value)}
-                    placeholder="John"
-                    className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={lastName}
-                    onChange={e => setLastName(e.target.value)}
-                    placeholder="Cena"
-                    className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all"
-                  />
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight bg-gradient-to-b from-white via-white to-zinc-500 bg-clip-text text-transparent max-w-3xl leading-tight">
+            Secure developer tunnels with zero config.
+          </h1>
+          <p className="text-zinc-400 text-sm sm:text-base max-w-xl mt-6 leading-relaxed">
+            Expose local projects running on any port to the public internet securely. Includes wildcard subdomains, persistent routing, and a clean setup panel.
+          </p>
+
+          {/* Action CTAs */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-10">
+            <Link 
+              href="/signup"
+              className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] cursor-pointer"
+            >
+              Get Started for Free
+            </Link>
+            <Link 
+              href="/login"
+              className="px-6 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-semibold text-sm transition-all hover:text-white cursor-pointer"
+            >
+              Access Dashboard
+            </Link>
+          </div>
+
+          {/* Interactive Mock Terminal */}
+          <div className="w-full max-w-2xl mt-16 text-left rounded-xl border border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/40 border-b border-zinc-900">
+              <div className="flex gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-red-500/40 inline-block"></span>
+                <span className="w-3 h-3 rounded-full bg-yellow-500/40 inline-block"></span>
+                <span className="w-3 h-3 rounded-full bg-green-500/40 inline-block"></span>
+              </div>
+              <span className="text-[10px] text-zinc-500 font-mono font-medium">bash — setu tunnel installation</span>
+            </div>
+            <div className="p-5 font-mono text-xs text-zinc-300 space-y-4 overflow-x-auto leading-relaxed">
+              <div>
+                <span className="text-zinc-500"># Install the lightweight binary</span>
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-purple-400">$ <span className="text-zinc-200">curl -sL https://setu.helios-logic.com/install.sh | bash</span></span>
+                  <button 
+                    onClick={() => handleCopy('curl -sL https://setu.helios-logic.com/install.sh | bash', 'install-cmd')}
+                    className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors uppercase font-bold px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900/50"
+                  >
+                    {copiedText === 'install-cmd' ? 'Copied' : 'Copy'}
+                  </button>
                 </div>
               </div>
-            )}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all"
-              />
+              <div>
+                <span className="text-zinc-500"># Authenticate client</span>
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-purple-400">$ <span className="text-zinc-200">setu login</span></span>
+                  <button 
+                    onClick={() => handleCopy('setu login', 'login-cmd')}
+                    className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors uppercase font-bold px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900/50"
+                  >
+                    {copiedText === 'login-cmd' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <span className="text-zinc-500"># Expose any local server (e.g. port 3000)</span>
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-purple-400">$ <span className="text-zinc-200">setu expose 3000 --subdomain my-app</span></span>
+                  <button 
+                    onClick={() => handleCopy('setu expose 3000 --subdomain my-app', 'expose-cmd')}
+                    className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors uppercase font-bold px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900/50"
+                  >
+                    {copiedText === 'expose-cmd' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <div className="text-zinc-500 mt-2 text-[10px]">
+                  {"\u003e Exposing 127.0.0.1:3000 -> https://my-app-john-cena.setu.helios-logic.com"}
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loadingAction === 'auth'}
-              className="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm transition-colors cursor-pointer flex items-center justify-center"
-            >
-              {loadingAction === 'auth' ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : authMode === 'login' ? (
-                'Sign In'
-              ) : (
-                'Create Account'
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center text-xs">
-            <button
-              onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-              className="text-purple-400 hover:text-purple-300 font-medium underline cursor-pointer"
-            >
-              {authMode === 'login' ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
-            </button>
           </div>
-        </div>
+
+          {/* Features Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-24">
+            <div className="p-6 rounded-xl border border-zinc-900 bg-zinc-950/40 text-left">
+              <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20 mb-4">
+                <Globe className="h-4.5 w-4.5 text-purple-400" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Wildcard Routing</h3>
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                Connect and reserve custom user subdomains under setu.helios-logic.com. Expose web apps, APIs, and hooks instantly.
+              </p>
+            </div>
+            <div className="p-6 rounded-xl border border-zinc-900 bg-zinc-950/40 text-left">
+              <div className="h-9 w-9 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 mb-4">
+                <Layers className="h-4.5 w-4.5 text-indigo-400" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Connection Multiplexing</h3>
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                Utilizes high-speed Yamux connection multiplexing over secure WebSocket streams to route hundreds of streams simultaneously.
+              </p>
+            </div>
+            <div className="p-6 rounded-xl border border-zinc-900 bg-zinc-950/40 text-left">
+              <div className="h-9 w-9 rounded-lg bg-pink-500/10 flex items-center justify-center border border-pink-500/20 mb-4">
+                <Lock className="h-4.5 w-4.5 text-pink-400" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Secure by Default</h3>
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                All external traffic runs over secure SSL/TLS. Tunnels require validation using cryptographically signed private API Keys.
+              </p>
+            </div>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="w-full border-t border-zinc-900 py-6 text-center text-xs text-zinc-500 z-10">
+          <p>© {new Date().getFullYear()} Setu. Released under the MIT License.</p>
+        </footer>
       </div>
     );
   }
@@ -821,22 +881,49 @@ export default function Home() {
 
           {/* Tab 4: CLI Instructions */}
           {activeTab === 'instructions' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fadeIn">
               <div className="glass rounded-xl p-6 space-y-6">
                 <div>
-                  <h3 className="text-base font-bold text-white">Install and Configure Setu CLI</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Follow these simple steps to expose your local projects.</p>
+                  <h3 className="text-lg font-bold text-white">Get Started with Setu CLI</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Follow these simple steps to configure and expose your local environment.</p>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  {/* Step 1: Install */}
                   <div className="flex gap-4 items-start">
                     <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
                       1
                     </div>
                     <div className="space-y-2 flex-1">
-                      <h4 className="text-sm font-semibold text-zinc-200">Login via CLI</h4>
+                      <h4 className="text-sm font-semibold text-zinc-200">Install CLI Client</h4>
                       <p className="text-xs text-muted-foreground">
-                        Initialize the connection credentials by running the login command on your machine.
+                        Run the installation script to download and install the `setu` binary to your system.
+                      </p>
+                      <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
+                        <span className="font-mono text-xs text-purple-400 select-all">
+                          curl -sL https://setu.helios-logic.com/install.sh | bash
+                        </span>
+                        <button
+                          onClick={() => handleCopy('curl -sL https://setu.helios-logic.com/install.sh | bash', 'cli-install')}
+                          className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
+                        >
+                          {copiedText === 'cli-install' ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className="border-zinc-900" />
+
+                  {/* Step 2: Login */}
+                  <div className="flex gap-4 items-start">
+                    <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
+                      2
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <h4 className="text-sm font-semibold text-zinc-200">Authenticate your Client</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Connect the CLI tool to your Setu account using your private API Key.
                       </p>
                       <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
                         <span className="font-mono text-xs text-zinc-300 select-all">
@@ -850,38 +937,56 @@ export default function Home() {
                         </button>
                       </div>
                       <p className="text-[10px] text-zinc-500 italic">
-                        Note: When prompted, paste one of your generated API Keys from the **API Keys** tab.
+                        Note: Copy your API Key from the <strong>API Keys</strong> tab when prompted.
                       </p>
                     </div>
                   </div>
 
                   <hr className="border-zinc-900" />
 
+                  {/* Step 3: Expose */}
                   <div className="flex gap-4 items-start">
                     <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
-                      2
+                      3
                     </div>
                     <div className="space-y-2 flex-1">
-                      <h4 className="text-sm font-semibold text-zinc-200">Expose Local Port</h4>
+                      <h4 className="text-sm font-semibold text-zinc-200">Expose Local Service</h4>
                       <p className="text-xs text-muted-foreground">
-                        Expose a port of your choice using one of your claimed subdomains.
+                        Expose a port of your choice using one of your claimed subdomains:
                       </p>
                       <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
                         <span className="font-mono text-xs text-zinc-300 select-all">
-                          setu expose 3000 --subdomain {subdomains[0]?.hostname || '&lt;your-subdomain&gt;'}
+                          setu expose 3000 --subdomain {subdomains[0]?.hostname || '<subdomain>'}
                         </span>
                         <button
-                          onClick={() => handleCopy(`setu expose 3000 --subdomain ${subdomains[0]?.hostname || '<your-subdomain>'}`, 'cli-expose')}
+                          onClick={() => handleCopy(`setu expose 3000 --subdomain ${subdomains[0]?.hostname || '<subdomain>'}`, 'cli-expose')}
                           className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
                         >
                           {copiedText === 'cli-expose' ? 'Copied' : 'Copy'}
                         </button>
                       </div>
                       <p className="text-[10px] text-zinc-500">
-                        Replace `3000` with the port you want to route, and verify your subdomain is listed as `ACTIVE` on this dashboard.
+                        Replace `3000` with the local port of your application. Make sure the subdomain is claimed in the **Subdomains** tab.
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* Flow Diagram */}
+                <div className="mt-8 pt-6 border-t border-zinc-900">
+                  <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">How it works</h4>
+                  <pre className="p-4 rounded-lg bg-zinc-950/80 border border-zinc-900 font-mono text-[10px] text-zinc-400 leading-relaxed overflow-x-auto">
+{`Public Request ➔ https://${subdomains[0]?.hostname || 'your-subdomain'}.setu.helios-logic.com
+                       │
+                       ▼ (TLS Secured Ingress)
+                  Setu Gateway (Single Entrypoint)
+                       │
+                       ▼ (Yamux Multiplexing over WebSockets)
+                   Setu CLI
+                       │
+                       ▼ (Local TCP Forward)
+                 127.0.0.1:3000 (Your Local Server)`}
+                  </pre>
                 </div>
               </div>
             </div>
