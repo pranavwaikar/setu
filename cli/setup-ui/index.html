@@ -105,6 +105,32 @@
                 </button>
             </div>
         </div>
+        
+        <!-- Advanced CLI Flags details -->
+        <details class="features-details">
+            <summary>💡 View Advanced CLI Flags & Features</summary>
+            <div class="details-content">
+                <h4>1. Host Header Overrides</h4>
+                <p>Rewrite Host header to match destination target (for Vite, Next.js, Webpack):</p>
+                <code>setu expose 3000 --subdomain my-app --host-header rewrite</code>
+
+                <h4>2. Local HTTPS Endpoints</h4>
+                <p>Proxy to local HTTPS servers, skipping self-signed SSL certificate check:</p>
+                <code>setu expose https://localhost:3000 --subdomain my-app --insecure-skip-verify</code>
+
+                <h4>3. Edge Protection (Basic Auth)</h4>
+                <p>Require credentials before public visitors can access your tunnel:</p>
+                <code>setu expose 3000 --subdomain my-app --auth "admin:secret"</code>
+
+                <h4>4. Layer-4 TCP Tunneling</h4>
+                <p>Tunnel raw TCP protocols (PostgreSQL, MySQL, SSH) via dynamic high-ports:</p>
+                <code>setu expose 5432 --subdomain my-db --tcp</code>
+
+                <div style="margin-top: 1rem; padding-top: 0.5rem;">
+                    <a href="https://github.com/pranavwaikar/setu/blob/main/README.md" target="_blank" class="subdomain-link">Read full documentation on GitHub ➔</a>
+                </div>
+            </div>
+        </details>
     </div>
 
     <!-- TOAST NOTIFICATION -->

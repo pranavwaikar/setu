@@ -88,15 +88,17 @@ func (c *wsConn) SetWriteDeadline(t time.Time) error {
 
 // Registry maps active subdomains to their corresponding Yamux sessions.
 type Registry struct {
-	mu        sync.RWMutex
-	tunnels   map[string]*yamux.Session
-	tunnelIds map[string]string
+	mu         sync.RWMutex
+	tunnels    map[string]*yamux.Session
+	tunnelIds  map[string]string
+	tunnelAuth map[string]string
 }
 
 func NewRegistry() *Registry {
 	return &Registry{
-		tunnels:   make(map[string]*yamux.Session),
-		tunnelIds: make(map[string]string),
+		tunnels:    make(map[string]*yamux.Session),
+		tunnelIds:  make(map[string]string),
+		tunnelAuth: make(map[string]string),
 	}
 }
 
@@ -109,7 +111,7 @@ func mustParseURL(raw string) *url.URL {
 	return u
 }
 
-func (r *Registry) Register(subdomain string, session *yamux.Session, tunnelId string) {
+func (r *Registry) Register(subdomain string, session *yamux.Session, tunnelId string, authCreds string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -120,6 +122,11 @@ func (r *Registry) Register(subdomain string, session *yamux.Session, tunnelId s
 
 	r.tunnels[subdomain] = session
 	r.tunnelIds[subdomain] = tunnelId
+	if authCreds != "" {
+		r.tunnelAuth[subdomain] = authCreds
+	} else {
+		delete(r.tunnelAuth, subdomain)
+	}
 }
 
 func (r *Registry) Unregister(subdomain string) {
@@ -127,6 +134,7 @@ func (r *Registry) Unregister(subdomain string) {
 	defer r.mu.Unlock()
 	delete(r.tunnels, subdomain)
 	delete(r.tunnelIds, subdomain)
+	delete(r.tunnelAuth, subdomain)
 }
 
 func (r *Registry) Get(subdomain string) (*yamux.Session, bool) {
@@ -302,6 +310,7 @@ func (g *Gateway) handleTunnelConnect(w http.ResponseWriter, r *http.Request) {
 	apiKey := r.Header.Get("X-API-Key")
 	subdomain := r.URL.Query().Get("subdomain")
 	localPortStr := r.URL.Query().Get("port")
+	authCreds := r.URL.Query().Get("auth")
 
 	if apiKey == "" || subdomain == "" || localPortStr == "" {
 		http.Error(w, "Missing authentication or connection details", http.StatusBadRequest)
@@ -331,6 +340,32 @@ func (g *Gateway) handleTunnelConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tunnelType := r.URL.Query().Get("type")
+	var tcpPort int
+	var tcpListener net.Listener
+	if tunnelType == "tcp" {
+		tcpListener, err = net.Listen("tcp", ":0")
+		if err != nil {
+			log.Printf("[TCP Listen Failed] %v", err)
+			_ = conn.WriteJSON(map[string]string{"error": "Failed to allocate TCP port"})
+			conn.Close()
+			return
+		}
+		tcpPort = tcpListener.Addr().(*net.TCPAddr).Port
+		err = conn.WriteJSON(map[string]interface{}{"status": "ok", "tcp_port": tcpPort})
+		if err != nil {
+			tcpListener.Close()
+			conn.Close()
+			return
+		}
+	} else {
+		err = conn.WriteJSON(map[string]interface{}{"status": "ok"})
+		if err != nil {
+			conn.Close()
+			return
+		}
+	}
+
 	// Wrap WebSocket to satisfy net.Conn
 	netConn := newWSConn(conn)
 
@@ -342,13 +377,57 @@ func (g *Gateway) handleTunnelConnect(w http.ResponseWriter, r *http.Request) {
 	session, err := yamux.Server(netConn, yamuxConfig)
 	if err != nil {
 		log.Printf("[Yamux Init Failed] Error: %v", err)
+		if tcpListener != nil {
+			tcpListener.Close()
+		}
 		conn.Close()
 		return
 	}
 
 	// 4. Register Session in Registry
-	g.registry.Register(authResp.Hostname, session, authResp.TunnelId)
+	g.registry.Register(authResp.Hostname, session, authResp.TunnelId, authCreds)
 	log.Printf("[CLI Connected] Subdomain: %s -> Tunnel ID: %s", authResp.Hostname, authResp.TunnelId)
+
+	if tunnelType == "tcp" {
+		log.Printf("[TCP Tunnel] Listening on port %d -> forwarding to subdomain %s", tcpPort, authResp.Hostname)
+		go func() {
+			defer tcpListener.Close()
+			
+			go func() {
+				<-session.CloseChan()
+				tcpListener.Close()
+			}()
+
+			for {
+				clientConn, err := tcpListener.Accept()
+				if err != nil {
+					return
+				}
+
+				stream, err := session.Open()
+				if err != nil {
+					clientConn.Close()
+					log.Printf("[TCP Proxy Error] Failed to open Yamux stream: %v", err)
+					continue
+				}
+
+				go func(c net.Conn, s net.Conn) {
+					defer c.Close()
+					defer s.Close()
+					errChan := make(chan error, 2)
+					go func() {
+						_, err := io.Copy(s, c)
+						errChan <- err
+					}()
+					go func() {
+						_, err := io.Copy(c, s)
+						errChan <- err
+					}()
+					<-errChan
+				}(clientConn, stream)
+			}
+		}()
+	}
 
 	// 5. Handle cleanup when session ends
 	go func() {
@@ -431,6 +510,21 @@ func (g *Gateway) handlePublicTraffic(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		g.showTunnelOffline(w, subdomain)
 		return
+	}
+
+	// Edge Protection (Basic Auth check)
+	g.registry.mu.RLock()
+	authCreds, hasAuth := g.registry.tunnelAuth[subdomain]
+	g.registry.mu.RUnlock()
+
+	if hasAuth && authCreds != "" {
+		username, password, ok := r.BasicAuth()
+		expectedParts := strings.SplitN(authCreds, ":", 2)
+		if !ok || len(expectedParts) != 2 || username != expectedParts[0] || password != expectedParts[1] {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Setu Private Tunnel"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Reverse-proxy through the Yamux session to the CLI client's local server.

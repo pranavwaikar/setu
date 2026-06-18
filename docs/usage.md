@@ -119,6 +119,29 @@ Claim a subdomain of your choice in the dashboard (e.g., `my-app`). Run any serv
 ```bash
 ./setu expose 3000 --subdomain my-app
 ```
+
+#### Advanced Expose Options
+
+- **Host Header Overrides**: To solve "Invalid Host Header" issues with tools like Vite or Webpack:
+  ```bash
+  # Rewrite the Host header to match the destination target (e.g., localhost:3000)
+  ./setu expose 3000 --subdomain my-app --host-header rewrite
+
+  # Or override it to a specific value
+  ./setu expose 3000 --subdomain my-app --host-header custom-host:3000
+  ```
+
+  ./setu expose https://localhost:3000 --subdomain my-app --insecure-skip-verify
+  ```
+
+  ./setu expose 3000 --subdomain my-app --auth "user:password"
+  ```
+
+- **Layer-4 Raw TCP Tunneling**: To tunnel raw TCP protocols like databases (Postgres/MySQL) or SSH, specify the `--tcp` flag:
+  ```bash
+  ./setu expose 5432 --subdomain my-db --tcp
+  ```
+  The Gateway dynamically opens a public port (e.g. `setu.helios-logic.com:32145`) and streams data directly to your local port.
 Once connected, you will see a success status:
 ```text
  ⚡ SETU TUNNEL ONLINE

@@ -23,6 +23,8 @@ import (
 	"syscall"
 	"time"
 
+	"crypto/tls"
+
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/yamux"
 	"github.com/pranavwaikar/setu/cli/internal/updater"
@@ -170,6 +172,10 @@ func (c *wsConn) SetWriteDeadline(t time.Time) error {
 var setupUIFS embed.FS
 
 var gatewayFlag string
+var hostHeaderFlag string
+var insecureSkipVerifyFlag bool
+var authFlag string
+var tcpFlag bool
 
 func main() {
 	var rootCmd = &cobra.Command{
@@ -256,6 +262,9 @@ func main() {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			localPort := args[0]
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			cfg, err := loadConfig()
 			if err != nil {
 				log.Fatalf("Failed to load config: %v", err)
@@ -275,44 +284,10 @@ func main() {
 
 			// Verify dial target exists locally (fail early if port is completely offline)
 			// Wait, we don't strictly require it to be online, but we can print a warning if not.
-			_, err = net.DialTimeout("tcp", "127.0.0.1:"+localPort, 1*time.Second)
+			_, targetHostPort := parseTarget(localPort)
+			_, err = net.DialTimeout("tcp", targetHostPort, 1*time.Second)
 			if err != nil {
-				log.Printf("⚠️  Warning: No local server appears to be listening on 127.0.0.1:%s. Tunnels will start, but requests may fail.", localPort)
-			}
-
-			// Connect to Gateway
-			connectURL := buildWebSocketURL(cfg.Gateway, subdomainFlag, localPort)
-			log.Printf("Connecting to gateway: %s", connectURL)
-
-			headers := make(http.Header)
-			headers.Set("X-API-Key", cfg.ApiKey)
-
-			dialer := websocket.Dialer{
-				HandshakeTimeout: 10 * time.Second,
-			}
-
-			conn, resp, err := dialer.Dial(connectURL, headers)
-			if err != nil {
-				if resp != nil {
-					defer resp.Body.Close()
-					body, _ := io.ReadAll(resp.Body)
-					log.Fatalf("Connection failed (HTTP %d): %s", resp.StatusCode, string(body))
-				}
-				log.Fatalf("WebSocket connection failed: %v", err)
-			}
-
-			// Wrap connection
-			netConn := newWSConn(conn)
-
-			// Setup Yamux Client
-			yamuxConfig := yamux.DefaultConfig()
-			yamuxConfig.KeepAliveInterval = 15 * time.Second
-			yamuxConfig.ConnectionWriteTimeout = 10 * time.Second
-
-			session, err := yamux.Client(netConn, yamuxConfig)
-			if err != nil {
-				netConn.Close()
-				log.Fatalf("Failed to initialize Yamux client: %v", err)
+				log.Printf("⚠️  Warning: No local server appears to be listening on %s. Tunnels will start, but requests may fail.", targetHostPort)
 			}
 
 			publicDomain := getPublicDisplayURL(cfg.Gateway, subdomainFlag)
@@ -330,42 +305,30 @@ func main() {
 			sigChan := make(chan os.Signal, 1)
 			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			go func() {
 				<-sigChan
 				fmt.Println("\nGracefully shutting down tunnel...")
-				session.Close()
-				netConn.Close()
 				cancel()
 				os.Exit(0)
 			}()
 
-			// Handle incoming streams from gateway
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					stream, err := session.Accept()
-					if err != nil {
-						if err == io.EOF || strings.Contains(err.Error(), "closed") {
-							log.Println("\nConnection to gateway lost.")
-						} else {
-							log.Printf("Stream accept error: %v", err)
-						}
-						return
-					}
-
-					go handleProxyStream(stream, localPort, publicDomain)
-				}
+			tunnelType := "http"
+			if tcpFlag {
+				tunnelType = "tcp"
 			}
+			runTunnelLoop(ctx, cfg.Gateway, subdomainFlag, localPort, cfg.ApiKey, hostHeaderFlag, insecureSkipVerifyFlag, authFlag, tunnelType)
 		},
 	}
 	exposeCmd.Flags().StringVar(&subdomainFlag, "subdomain", "", "Subdomain hostname claimed on Setu Dashboard")
 	exposeCmd.Flags().StringVar(&gatewayFlag, "gateway", "", "Custom Gateway host (e.g. 127.0.0.1:8080 or tunnel.setu.com)")
+	exposeCmd.Flags().StringVar(&hostHeaderFlag, "host-header", "", "Rewrite the Host header of proxy requests (e.g., 'localhost:3000' or 'rewrite')")
+	exposeCmd.Flags().BoolVar(&insecureSkipVerifyFlag, "insecure-skip-verify", false, "Accept self-signed certificates when proxying to local HTTPS endpoints")
+	exposeCmd.Flags().StringVar(&authFlag, "auth", "", "Username and password for basic auth protection at the gateway edge (e.g., 'username:password')")
+	exposeCmd.Flags().BoolVar(&tcpFlag, "tcp", false, "Expose raw TCP tunnel instead of HTTP")
 	startCmd.Flags().StringVar(&gatewayFlag, "gateway", "", "Custom Gateway host (e.g. 127.0.0.1:8080 or tunnel.setu.com)")
+	startCmd.Flags().StringVar(&hostHeaderFlag, "host-header", "", "Rewrite the Host header of proxy requests (e.g., 'localhost:3000' or 'rewrite')")
+	startCmd.Flags().BoolVar(&insecureSkipVerifyFlag, "insecure-skip-verify", false, "Accept self-signed certificates when proxying to local HTTPS endpoints")
+	startCmd.Flags().StringVar(&authFlag, "auth", "", "Username and password for basic auth protection at the gateway edge (e.g., 'username:password')")
 
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(logoutCmd)
@@ -826,7 +789,7 @@ func runSetupServer(cfg *Config) {
 	}
 }
 
-func buildWebSocketURL(gateway, subdomain, port string) string {
+func buildWebSocketURL(gateway, subdomain, port string, auth string, tunnelType string) string {
 	rawURL := gateway
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") && !strings.HasPrefix(rawURL, "ws://") && !strings.HasPrefix(rawURL, "wss://") {
 		if rawURL == "setu.helios-logic.com" {
@@ -852,6 +815,12 @@ func buildWebSocketURL(gateway, subdomain, port string) string {
 	q := u.Query()
 	q.Set("subdomain", subdomain)
 	q.Set("port", port)
+	if auth != "" {
+		q.Set("auth", auth)
+	}
+	if tunnelType != "" {
+		q.Set("type", tunnelType)
+	}
 	u.RawQuery = q.Encode()
 
 	return u.String()
@@ -880,16 +849,76 @@ func getPublicDisplayURL(gateway, subdomain string) string {
 	return fmt.Sprintf("%s.%s", subdomain, suffix)
 }
 
-func handleProxyStream(stream net.Conn, localPort string, publicDomain string) {
+func parseTarget(target string) (scheme string, hostPort string) {
+	if strings.HasPrefix(target, "https://") {
+		return "https", strings.TrimPrefix(target, "https://")
+	}
+	if strings.HasPrefix(target, "http://") {
+		return "http", strings.TrimPrefix(target, "http://")
+	}
+	if !strings.Contains(target, ":") {
+		return "http", "127.0.0.1:" + target
+	}
+	return "http", target
+}
+
+func dialLocal(scheme, targetHostPort string, insecureSkipVerify bool, hostHeader string) (net.Conn, error) {
+	dialer := &net.Dialer{Timeout: 2 * time.Second}
+	if scheme == "https" {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: insecureSkipVerify,
+		}
+		if hostHeader != "" && hostHeader != "rewrite" {
+			sniHost := hostHeader
+			if h, _, err := net.SplitHostPort(hostHeader); err == nil {
+				sniHost = h
+			}
+			tlsConfig.ServerName = sniHost
+		} else {
+			if h, _, err := net.SplitHostPort(targetHostPort); err == nil {
+				tlsConfig.ServerName = h
+			} else {
+				tlsConfig.ServerName = targetHostPort
+			}
+		}
+		return tls.DialWithDialer(dialer, "tcp", targetHostPort, tlsConfig)
+	}
+	return dialer.Dial("tcp", targetHostPort)
+}
+
+func handleProxyStream(stream net.Conn, localPort string, publicDomain string, hostHeader string, insecureSkipVerify bool, tunnelType string) {
 	defer stream.Close()
+
+	scheme, targetHostPort := parseTarget(localPort)
+
+	if tunnelType == "tcp" {
+		localConn, dialErr := dialLocal(scheme, targetHostPort, insecureSkipVerify, hostHeader)
+		if dialErr != nil {
+			log.Printf("[Proxy Error] Failed to dial local target %s: %v", targetHostPort, dialErr)
+			return
+		}
+		defer localConn.Close()
+
+		errChan := make(chan error, 2)
+		go func() {
+			_, err := io.Copy(localConn, stream)
+			errChan <- err
+		}()
+		go func() {
+			_, err := io.Copy(stream, localConn)
+			errChan <- err
+		}()
+		<-errChan
+		return
+	}
 
 	reader := bufio.NewReader(stream)
 	req, err := http.ReadRequest(reader)
 	if err != nil {
 		// Fallback to raw copy if HTTP parsing fails (e.g., raw TCP / ping)
-		localConn, dialErr := net.DialTimeout("tcp", "127.0.0.1:"+localPort, 2*time.Second)
+		localConn, dialErr := dialLocal(scheme, targetHostPort, insecureSkipVerify, hostHeader)
 		if dialErr != nil {
-			log.Printf("[Proxy Error] Failed to dial local port %s: %v", localPort, dialErr)
+			log.Printf("[Proxy Error] Failed to dial local target %s: %v", targetHostPort, dialErr)
 			return
 		}
 		defer localConn.Close()
@@ -909,11 +938,26 @@ func handleProxyStream(stream net.Conn, localPort string, publicDomain string) {
 
 	// Format timestamp
 	timeStr := time.Now().Format("15:04:05")
-	fmt.Printf("[%s] %-6s %s%s -> 127.0.0.1:%s\n", timeStr, req.Method, publicDomain, req.URL.Path, localPort)
+	fmt.Printf("[%s] %-6s %s%s -> %s\n", timeStr, req.Method, publicDomain, req.URL.Path, targetHostPort)
 
-	localConn, err := net.DialTimeout("tcp", "127.0.0.1:"+localPort, 2*time.Second)
+	if hostHeader != "" {
+		if hostHeader == "rewrite" {
+			port := localPort
+			if strings.Contains(targetHostPort, ":") {
+				_, p, err := net.SplitHostPort(targetHostPort)
+				if err == nil {
+					port = p
+				}
+			}
+			req.Host = "localhost:" + port
+		} else {
+			req.Host = hostHeader
+		}
+	}
+
+	localConn, err := dialLocal(scheme, targetHostPort, insecureSkipVerify, hostHeader)
 	if err != nil {
-		log.Printf("[Proxy Error] Failed to dial local port %s: %v", localPort, err)
+		log.Printf("[Proxy Error] Failed to dial local target %s: %v", targetHostPort, err)
 		return
 	}
 	defer localConn.Close()
@@ -985,7 +1029,7 @@ var startCmd = &cobra.Command{
 			wg.Add(1)
 			go func(m PortMapping) {
 				defer wg.Done()
-				runTunnelLoop(ctx, cfg.Gateway, m.Subdomain, m.Port, cfg.ApiKey)
+				runTunnelLoop(ctx, cfg.Gateway, m.Subdomain, m.Port, cfg.ApiKey, hostHeaderFlag, insecureSkipVerifyFlag, authFlag, "http")
 			}(mapping)
 		}
 
@@ -993,14 +1037,17 @@ var startCmd = &cobra.Command{
 	},
 }
 
-func runTunnelLoop(ctx context.Context, gateway, subdomain, localPort, apiKey string) {
+func runTunnelLoop(ctx context.Context, gateway, subdomain, localPort, apiKey string, hostHeader string, insecureSkipVerify bool, auth string, tunnelType string) {
 	publicDomain := getPublicDisplayURL(gateway, subdomain)
+	backoff := 1 * time.Second
+	maxBackoff := 60 * time.Second
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			connectURL := buildWebSocketURL(gateway, subdomain, localPort)
+			connectURL := buildWebSocketURL(gateway, subdomain, localPort, auth, tunnelType)
 			headers := make(http.Header)
 			headers.Set("X-API-Key", apiKey)
 
@@ -1016,14 +1063,39 @@ func runTunnelLoop(ctx context.Context, gateway, subdomain, localPort, apiKey st
 					body, _ := io.ReadAll(resp.Body)
 					errMsg = fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body))
 				}
-				log.Printf("[%s] Connection failed: %s. Retrying in 5s...", subdomain, errMsg)
+				log.Printf("[%s] Connection failed: %s. Retrying in %v...", subdomain, errMsg, backoff)
 				select {
 				case <-ctx.Done():
 					return
-				case <-time.After(5 * time.Second):
+				case <-time.After(backoff):
+					backoff *= 2
+					if backoff > maxBackoff {
+						backoff = maxBackoff
+					}
 					continue
 				}
 			}
+
+			// Read handshake response
+			var handshake struct {
+				Status  string `json:"status"`
+				TCPPort int    `json:"tcp_port"`
+				Error   string `json:"error"`
+			}
+			err = conn.ReadJSON(&handshake)
+			if err != nil {
+				conn.Close()
+				log.Printf("[%s] Handshake read failed: %v. Retrying...", subdomain, err)
+				continue
+			}
+			if handshake.Error != "" {
+				conn.Close()
+				log.Printf("[%s] Handshake returned error: %s. Retrying...", subdomain, handshake.Error)
+				continue
+			}
+
+			// Reset backoff on successful connection
+			backoff = 1 * time.Second
 
 			netConn := newWSConn(conn)
 			yamuxConfig := yamux.DefaultConfig()
@@ -1033,13 +1105,8 @@ func runTunnelLoop(ctx context.Context, gateway, subdomain, localPort, apiKey st
 			session, err := yamux.Client(netConn, yamuxConfig)
 			if err != nil {
 				netConn.Close()
-				log.Printf("[%s] Yamux client initialization failed: %v. Retrying in 5s...", subdomain, err)
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(5 * time.Second):
-					continue
-				}
+				log.Printf("[%s] Yamux client initialization failed: %v. Retrying...", subdomain, err)
+				continue
 			}
 
 			tunnelCtx, cancelTunnel := context.WithCancel(ctx)
@@ -1048,7 +1115,30 @@ func runTunnelLoop(ctx context.Context, gateway, subdomain, localPort, apiKey st
 				cancelTunnel()
 			}()
 
-			log.Printf("[%s] Connected successfully.", subdomain)
+			go startHeartbeat(tunnelCtx, conn)
+
+			if tunnelType == "tcp" {
+				parts := strings.Split(gateway, ":")
+				host := parts[0]
+				if strings.HasPrefix(host, "http://") {
+					host = strings.TrimPrefix(host, "http://")
+				} else if strings.HasPrefix(host, "https://") {
+					host = strings.TrimPrefix(host, "https://")
+				} else if strings.HasPrefix(host, "ws://") {
+					host = strings.TrimPrefix(host, "ws://")
+				} else if strings.HasPrefix(host, "wss://") {
+					host = strings.TrimPrefix(host, "wss://")
+				}
+				if host == "127.0.0.1" || host == "localhost" {
+					host = os.Getenv("TUNNEL_DOMAIN")
+					if host == "" {
+						host = "setu.helios-logic.com"
+					}
+				}
+				log.Printf("[%s] Connected successfully. Raw TCP Forwarding: %s:%d -> 127.0.0.1:%s", subdomain, host, handshake.TCPPort, localPort)
+			} else {
+				log.Printf("[%s] Connected successfully.", subdomain)
+			}
 
 			for {
 				select {
@@ -1059,7 +1149,7 @@ func runTunnelLoop(ctx context.Context, gateway, subdomain, localPort, apiKey st
 					if err != nil {
 						break
 					}
-					go handleProxyStream(stream, localPort, publicDomain)
+					go handleProxyStream(stream, localPort, publicDomain, hostHeader, insecureSkipVerify, tunnelType)
 				}
 			}
 
@@ -1070,8 +1160,16 @@ func runTunnelLoop(ctx context.Context, gateway, subdomain, localPort, apiKey st
 			case <-ctx.Done():
 				return
 			default:
-				log.Printf("[%s] Connection lost. Retrying in 5s...", subdomain)
-				time.Sleep(5 * time.Second)
+				log.Printf("[%s] Connection lost. Retrying in %v...", subdomain, backoff)
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(backoff):
+					backoff *= 2
+					if backoff > maxBackoff {
+						backoff = maxBackoff
+					}
+				}
 			}
 		}
 	}
@@ -1082,4 +1180,21 @@ func Min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func startHeartbeat(ctx context.Context, conn *websocket.Conn) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(5*time.Second))
+			if err != nil {
+				return
+			}
+		}
+	}
 }

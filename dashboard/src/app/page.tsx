@@ -1073,6 +1073,54 @@ export default function Home() {
                       For advanced setups (like microservices), use <code className="text-purple-300 font-mono text-[10px] bg-purple-950/40 px-1 py-0.5 rounded">setu setup</code> to assign multiple subdomains (e.g. <code className="text-zinc-300">jhon-cena</code> for frontend, <code className="text-zinc-300">api-jhon-cena</code> for backend) to their respective local ports. Once saved, run <code className="text-purple-300 font-mono text-[10px] bg-purple-950/40 px-1 py-0.5 rounded">setu start</code> to launch all tunnels simultaneously in one terminal window.
                     </p>
                   </div>
+
+                  {/* Expandable CLI details */}
+                  <details className="group border border-zinc-800 rounded-xl bg-zinc-950/40 p-4 max-w-xl cursor-pointer">
+                    <summary className="list-none flex items-center justify-between text-xs font-semibold text-zinc-300 group-open:text-purple-400 select-none">
+                      <span>💡 View Advanced Feature Flags & Commands</span>
+                      <span className="text-[10px] text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="mt-3 space-y-4 text-[11px] text-zinc-400 leading-relaxed border-t border-zinc-900/60 pt-3">
+                      <div>
+                        <p className="font-semibold text-zinc-300">1. Host Header Overrides</p>
+                        <p className="text-zinc-500 mt-0.5">Solve "Invalid Host Header" issues in Vite, Next.js, and Webpack by rewriting the host header:</p>
+                        <code className="block mt-1.5 font-mono text-[10px] bg-zinc-900 p-2 rounded text-purple-300 select-all">
+                          setu expose 3000 --subdomain myapp --host-header rewrite
+                        </code>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-zinc-300">2. Local HTTPS Endpoints</p>
+                        <p className="text-zinc-500 mt-0.5">Proxy to local servers running on HTTPS (bypassing self-signed cert validation):</p>
+                        <code className="block mt-1.5 font-mono text-[10px] bg-zinc-900 p-2 rounded text-purple-300 select-all">
+                          setu expose https://localhost:3000 --subdomain myapp --insecure-skip-verify
+                        </code>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-zinc-300">3. Edge Protection (Basic Auth)</p>
+                        <p className="text-zinc-500 mt-0.5">Require a username and password before public traffic reaches your local machine:</p>
+                        <code className="block mt-1.5 font-mono text-[10px] bg-zinc-900 p-2 rounded text-purple-300 select-all">
+                          setu expose 3000 --subdomain myapp --auth "admin:secret"
+                        </code>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-zinc-300">4. Layer-4 Raw TCP Tunneling</p>
+                        <p className="text-zinc-500 mt-0.5">Expose databases (Postgres, MySQL) or SSH tunnels via dynamic high-ports:</p>
+                        <code className="block mt-1.5 font-mono text-[10px] bg-zinc-900 p-2 rounded text-purple-300 select-all">
+                          setu expose 5432 --subdomain mydb --tcp
+                        </code>
+                      </div>
+                      <div className="pt-2 border-t border-zinc-900/60">
+                        <a 
+                          href="https://github.com/pranavwaikar/setu/blob/main/README.md" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-purple-400 hover:text-purple-300 hover:underline inline-flex items-center gap-1 font-semibold"
+                        >
+                          Read full documentation on GitHub ➔
+                        </a>
+                      </div>
+                    </div>
+                  </details>
                 </div>
 
                 {/* Flow Diagram */}

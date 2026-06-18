@@ -74,6 +74,7 @@ header {
     letter-spacing: -0.025em;
     background: linear-gradient(to right, #fafafa, #a1a1aa);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -602,6 +603,7 @@ header {
     margin-bottom: 1rem;
     background: linear-gradient(to right, #fafafa, #ef4444);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -610,5 +612,68 @@ header {
     font-size: 0.95rem;
     max-width: 400px;
     line-height: 1.5;
+}
+
+/* Details / Expandable section styling */
+details.features-details {
+    border: 1px solid var(--border-muted);
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 1rem;
+    margin-top: 2rem;
+    cursor: pointer;
+}
+
+details.features-details summary {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    outline: none;
+    list-style: none;
+}
+
+details.features-details summary::-webkit-details-marker {
+    display: none;
+}
+
+details.features-details summary::after {
+    content: "▼";
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+details.features-details[open] summary::after {
+    transform: rotate(180deg);
+}
+
+details.features-details .details-content {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border-muted);
+    padding-top: 1rem;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+details.features-details h4 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+details.features-details code {
+    display: block;
+    background: #09090b;
+    border: 1px solid var(--border-muted);
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    font-family: monospace;
+    color: #38bdf8;
+    margin-top: 0.25rem;
 }
 

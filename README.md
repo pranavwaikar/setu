@@ -78,6 +78,46 @@ setu login
 setu expose 3000 --subdomain myapp
 ```
 
+#### Host Header Overrides (for Vite, Webpack, Next.js)
+
+If your local server rejects requests with an "Invalid Host Header" error, you can rewrite it to match the local target using `--host-header`:
+
+```bash
+# Rewrite Host header to match target (e.g., localhost:3000)
+setu expose 3000 --subdomain myapp --host-header rewrite
+
+# Or override it to a specific value
+setu expose 3000 --subdomain myapp --host-header my-custom-host.local:3000
+```
+
+#### Tunneling to Local HTTPS Endpoints
+
+If your local server runs on HTTPS/TLS (even with self-signed certificates), you can specify the `https://` scheme and use `--insecure-skip-verify` to bypass certificate verification:
+
+```bash
+setu expose https://localhost:3000 --subdomain myapp --insecure-skip-verify
+```
+
+#### Edge Protection (Basic Auth)
+
+To protect your exposed local server from unauthorized public users or automated web scanners, you can enable HTTP Basic Authentication at the Gateway edge using the `--auth` flag:
+
+```bash
+# Challenge visitors with a username and password before allowing access
+setu expose 3000 --subdomain myapp --auth "admin:mypassword123"
+```
+
+#### Layer-4 Raw TCP Tunneling
+
+To expose raw TCP-based applications (like PostgreSQL, MySQL, SSH, or custom game servers) without parsing or terminating the application layer protocol, use the `--tcp` flag. The gateway dynamically allocates a high-port for your tunnel:
+
+```bash
+# Expose a local PostgreSQL database (port 5432)
+setu expose 5432 --subdomain mydb --tcp
+```
+
+The CLI will print the allocated public address (e.g. `setu.helios-logic.com:32145 -> localhost:5432`) which you can use directly with database clients.
+
 ### 3. Or use the visual setup panel
 
 ```bash
