@@ -6,90 +6,17 @@ Setu is a self-hosted, multi-tenant developer tunneling platform that allows you
 
 ## Getting Started
 
-### Prerequisites
-To run Setu locally, make sure you have the following installed:
-- **Node.js** (v20.16.0 or higher)
-- **Go** (1.20 or higher)
-- **npm** (v10 or higher)
-
----
-
-## Local Development Setup
-
-To run all components locally on your machine, follow these steps:
-
-### 1. Database & NestJS API
-1. Navigate to the `api` folder and install dependencies:
-   ```bash
-   cd api
-   npm install
-   ```
-2. Generate the Prisma database client:
-   ```bash
-   npx prisma generate
-   ```
-3. Initialize the SQLite database and push the schema:
-   ```bash
-   npx prisma db push
-   ```
-4. Start the API server:
-   ```bash
-   npm run start
-   ```
-   *The API will run on `http://127.0.0.1:4000`.*
-
-### 2. Next.js Dashboard
-1. Navigate to the `dashboard` folder and install dependencies:
-   ```bash
-   cd dashboard
-   npm install
-   ```
-2. Build the project (or run in development mode):
-   ```bash
-   npm run build
-   # Or run in dev mode:
-   npm run dev
-   ```
-3. Start the dashboard:
-   ```bash
-   npm run start
-   ```
-   *The Dashboard will run on `http://127.0.0.1:3000`.*
-
-### 3. Go Gateway
-1. Navigate to the `gateway` folder:
-   ```bash
-   cd gateway
-   ```
-2. Build the gateway binary:
-   ```bash
-   go build -o setu-gateway
-   ```
-3. Start the gateway server with configuration environment variables:
-   ```bash
-   API_SERVER_URL=http://127.0.0.1:4000 \
-   GATEWAY_API_TOKEN=default-gateway-secret \
-   TUNNEL_DOMAIN=lvh.me \
-   PORT=8080 \
-   ./setu-gateway
-   ```
-   *The Gateway routes public requests on port `8080`.*
-
----
-
-## Local Setup via Docker Compose
-
-If you have Docker installed and running, you can spin up the entire Setu stack (PostgreSQL, NestJS API, Next.js Dashboard, and Go Gateway) with a single command:
+To run the entire Setu platform locally, make sure you have **Docker** and **Docker Compose** installed. You can spin up the full stack (PostgreSQL, NestJS API, Next.js Dashboard, and Go Gateway) with a single command:
 
 1. Start the stack from the root directory:
    ```bash
    docker compose up --build -d
    ```
 2. The containers will start up in the following order:
-   - **`setu_postgres`**: Launches PostgreSQL database on port `5432`.
-   - **`setu_api`**: Runs database migrations (`npx prisma db push`) and starts the NestJS API server on `http://127.0.0.1:4000`.
-   - **`setu_dashboard`**: Starts the Next.js dashboard on `http://127.0.0.1:3000`.
-   - **`setu_gateway`**: Starts the Go tunnel gateway on `http://127.0.0.1:8080`.
+   - **`setu_postgres`**: Launches PostgreSQL database on port `5432` (internally mapped, bound locally to `127.0.0.1:15432`).
+   - **`setu_api`**: Runs database migrations and starts the NestJS API server on `http://127.0.0.1:4000` (internal: `http://api:4000`).
+   - **`setu_dashboard`**: Starts the Next.js dashboard on `http://127.0.0.1:3000` (internal: `http://dashboard:3000`).
+   - **`setu_gateway`**: Starts the Go tunnel gateway on `http://127.0.0.1:8080` (internal: `http://gateway:8080`).
 3. Check container health status:
    ```bash
    docker compose ps
@@ -184,12 +111,21 @@ We have made it easy to configure your custom domain using environment variables
 
 ### Configuration & Deployment Steps
 
-1. **Set up Environment Variables**: Create a `.env` file in the root directory (based on the [.env.example](file:///Users/pranavwaikar/Documents/GitHub/setu/.env.example) template) or set them in your terminal session before launching the containers:
+1. **Set up Environment Variables**: Create a `.env` file in the root directory (based on the [.env.example](file:///Users/pranavwaikar/Documents/GitHub/setu/.env.example) template). 
+   
+   **Required variables**:
    ```env
-   TUNNEL_DOMAIN=setu.yourdomain.com
-   PUBLIC_DOMAIN=https://setu.yourdomain.com
-   GATEWAY_API_TOKEN=your-secret-token
-   JWT_SECRET=your-jwt-secret
+   TUNNEL_DOMAIN=setu.helios-logic.com
+   PUBLIC_DOMAIN=https://setu.helios-logic.com
+   GATEWAY_API_TOKEN=default-gateway-secret
+   JWT_SECRET=supersecretjwtkey
+   NODE_ENV=production
+   ```
+
+   **Optional / Automatic variables** (handled automatically by `docker-compose.yml` but can be overridden):
+   ```env
+   # DATABASE_URL=postgresql://postgres:password@postgres:5432/setu?schema=public
+   # INTERNAL_API_URL=http://api:4000
    ```
 
    > [!IMPORTANT]

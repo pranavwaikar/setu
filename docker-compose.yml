@@ -9,11 +9,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
-      - "15432:5432"
+      - "127.0.0.1:15432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "setu"]
+      test: [ "CMD", "pg_isready", "-U", "postgres", "-d", "setu" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -39,7 +39,7 @@ services:
         condition: service_healthy
     healthcheck:
       # Uses /health — a lightweight, DB-free liveness probe
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:4000/health"]
+      test: [ "CMD", "curl", "-f", "http://127.0.0.1:4000/health" ]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -61,7 +61,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/"]
+      test: [ "CMD", "curl", "-f", "http://127.0.0.1:3000/" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,7 +85,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
+      test: [ "CMD", "curl", "-f", "http://127.0.0.1:8080/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -99,7 +99,7 @@ services:
       # HTTPS wildcard router (port 443)
       # Uses the letsencrypt-dns certresolver (Cloudflare DNS-01 challenge)
       # so that *.${TUNNEL_DOMAIN} gets a valid, browser-trusted cert.
-      - "traefik.http.routers.setu-tunnel-https.rule=HostRegexp(`^[a-z0-9-]+\.${TUNNEL_DOMAIN:-setu.helios-logic.com}$`)"
+      - "traefik.http.routers.setu-tunnel-https.rule=HostRegexp(`^[a-z0-9-]+[.]${TUNNEL_DOMAIN:-setu.helios-logic.com}$`)"
       - "traefik.http.routers.setu-tunnel-https.entrypoints=https"
       - "traefik.http.routers.setu-tunnel-https.tls=true"
       - "traefik.http.routers.setu-tunnel-https.tls.certresolver=letsencrypt-dns"
@@ -108,7 +108,7 @@ services:
       - "traefik.http.routers.setu-tunnel-https.service=setu-tunnel-svc"
 
       # HTTP wildcard router (port 80) — redirected to HTTPS by Coolify's middleware
-      - "traefik.http.routers.setu-tunnel-http.rule=HostRegexp(`^[a-z0-9-]+\.${TUNNEL_DOMAIN:-setu.helios-logic.com}$`)"
+      - "traefik.http.routers.setu-tunnel-http.rule=HostRegexp(`^[a-z0-9-]+[.]${TUNNEL_DOMAIN:-setu.helios-logic.com}$`)"
       - "traefik.http.routers.setu-tunnel-http.entrypoints=http"
       - "traefik.http.routers.setu-tunnel-http.middlewares=redirect-to-https"
       - "traefik.http.routers.setu-tunnel-http.service=setu-tunnel-svc"

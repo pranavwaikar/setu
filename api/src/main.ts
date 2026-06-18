@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 
 // Prevent silent crashes from unhandled rejections / exceptions
@@ -14,6 +15,26 @@ process.on('uncaughtException', (err) => {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Enforce check for weak/default secrets in production
+  if (process.env.NODE_ENV === 'production') {
+    const jwtSecret = process.env.JWT_SECRET;
+    const gatewayToken = process.env.GATEWAY_API_TOKEN;
+    if (!jwtSecret || jwtSecret === 'supersecretjwtkey') {
+      console.error('❌ CRITICAL SECURITY ERROR: Weak or missing JWT_SECRET in production!');
+      process.exit(1);
+    }
+    if (!gatewayToken || gatewayToken === 'default-gateway-secret') {
+      console.error('❌ CRITICAL SECURITY ERROR: Weak or missing GATEWAY_API_TOKEN in production!');
+      process.exit(1);
+    }
+  }
+
+  // Enable global validation rules
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+  }));
 
   // All traffic arrives via the gateway (same-origin).
   // CORS origin is the single public domain; keeps local dev working too.

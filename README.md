@@ -345,14 +345,28 @@ After editing, click **"Save"** then click the **"Restart Proxy"** button on the
 
 #### 5. Set the environment variables in your Coolify service
 
-Before deploying, configure these environment variables in your Coolify service settings. These variables make it easy to configure your custom domain. A template is available in [.env.example](file:///Users/pranavwaikar/Documents/GitHub/setu/.env.example) for reference.
+Before deploying, configure these environment variables in your Coolify service settings. A template is available in [.env.example](file:///Users/pranavwaikar/Documents/GitHub/setu/.env.example) for reference.
 
-| Variable | Example Value | Description |
+##### Required Configuration
+
+| Variable | Default Value | Description |
 |---|---|---|
-| `PUBLIC_DOMAIN` | `https://setu.yourdomain.com` | Public URL of your Setu instance |
-| `TUNNEL_DOMAIN` | `setu.yourdomain.com` | Base domain used to derive tunnel subdomains |
-| `GATEWAY_API_TOKEN` | `your-secret-token` | Shared secret between gateway and API |
-| `JWT_SECRET` | `your-jwt-secret` | Secret for signing user JWTs |
+| `PUBLIC_DOMAIN` | `https://setu.helios-logic.com` | Public URL of your Setu instance |
+| `TUNNEL_DOMAIN` | `setu.helios-logic.com` | Base domain used to derive tunnel subdomains |
+| `GATEWAY_API_TOKEN` | `default-gateway-secret` | Shared secret between gateway and API |
+| `JWT_SECRET` | `supersecretjwtkey` | Secret for signing user authentication JWTs |
+| `NODE_ENV` | `production` | Running environment mode (enforces secure cookies & strict validation checks) |
+
+##### Optional / Automatic Configuration
+
+These are handled automatically by `docker-compose.yml`, but can be overridden:
+
+| Variable | Default Value | Description |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://postgres:password@postgres:5432/setu?schema=public` | Connection URL for PostgreSQL database |
+| `INTERNAL_API_URL` | `http://api:4000` | Internal API server URL (for Next.js SSR requests) |
+| `NEXT_PUBLIC_TUNNEL_DOMAIN` | *(Inherits `TUNNEL_DOMAIN`)* | Next.js build-time fallback tunnel domain |
+| `NEXT_PUBLIC_PUBLIC_DOMAIN` | *(Inherits `PUBLIC_DOMAIN`)* | Next.js build-time fallback public URL |
 
 > [!IMPORTANT]
 > **Build-Time Compilation:** Because Next.js compiles the dashboard's domain configuration (`NEXT_PUBLIC_TUNNEL_DOMAIN` and `NEXT_PUBLIC_PUBLIC_DOMAIN`) into the client-side JavaScript bundle during the Docker build process, the `TUNNEL_DOMAIN` and `PUBLIC_DOMAIN` environment variables **must be defined before deploying or building the service in Coolify**.

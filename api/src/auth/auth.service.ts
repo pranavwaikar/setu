@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -11,6 +11,10 @@ export class AuthService {
   ) {}
 
   async register(email: string, password: string, firstName?: string, lastName?: string) {
+    if (!password || password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters long');
+    }
+
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });

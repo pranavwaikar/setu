@@ -12,6 +12,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -259,6 +260,14 @@ func main() {
 
 	// Dispatch wildcard tunnel subdomain requests to handlePublicTraffic, and standard paths to mux.
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Block public access to internal endpoints
+		cleanedPath := path.Clean(r.URL.Path)
+		normalizedPath := strings.ToLower(cleanedPath)
+		if strings.HasPrefix(normalizedPath, "/api/internal/") || strings.HasPrefix(normalizedPath, "/internal/") || strings.Contains(normalizedPath, "/internal/") {
+			http.Error(w, "Access Denied: Internal endpoint", http.StatusForbidden)
+			return
+		}
+
 		host := r.Host
 		if strings.Contains(host, ":") {
 			h, _, err := net.SplitHostPort(host)
@@ -455,6 +464,7 @@ func (g *Gateway) apiProxy() http.Handler {
 		req.URL.RawPath = strings.TrimPrefix(req.URL.RawPath, "/api")
 		req.Header.Set("X-Forwarded-Host", req.Host)
 		req.Header.Set("X-Forwarded-Proto", "https")
+		req.Header.Del("X-Gateway-Secret")
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("[API Proxy Error] %s %s: %v", r.Method, r.URL.Path, err)
@@ -475,6 +485,7 @@ func (g *Gateway) dashboardProxy() http.Handler {
 		originalDirector(req)
 		req.Header.Set("X-Forwarded-Host", req.Host)
 		req.Header.Set("X-Forwarded-Proto", "https")
+		req.Header.Del("X-Gateway-Secret")
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("[Dashboard Proxy Error] %s %s: %v", r.Method, r.URL.Path, err)

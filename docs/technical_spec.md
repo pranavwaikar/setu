@@ -552,13 +552,21 @@ services:
 
 # Coolify Deployment
 
-Environment variables:
+Required Environment variables:
 
 ```env
-TUNNEL_DOMAIN=setu.yourdomain.com
-PUBLIC_DOMAIN=https://setu.yourdomain.com
-GATEWAY_API_TOKEN=your-secret-token
-JWT_SECRET=your-jwt-secret
+TUNNEL_DOMAIN=setu.helios-logic.com
+PUBLIC_DOMAIN=https://setu.helios-logic.com
+GATEWAY_API_TOKEN=default-gateway-secret
+JWT_SECRET=supersecretjwtkey
+NODE_ENV=production
+```
+
+Optional / Automatic Environment variables:
+
+```env
+# DATABASE_URL=postgresql://postgres:password@postgres:5432/setu?schema=public
+# INTERNAL_API_URL=http://api:4000
 ```
 
 > [!IMPORTANT]

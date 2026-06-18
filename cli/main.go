@@ -49,7 +49,7 @@ func getConfigPath() string {
 		return ".setu_config.json"
 	}
 	dir := filepath.Join(home, ".setu")
-	_ = os.MkdirAll(dir, 0755)
+	_ = os.MkdirAll(dir, 0700)
 	return filepath.Join(dir, "config.json")
 }
 
@@ -91,11 +91,12 @@ func loadConfig() (*Config, error) {
 
 func saveConfig(cfg *Config) error {
 	path := getConfigPath()
-	file, err := os.Create(path)
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+	_ = os.Chmod(path, 0600) // Ensure permissions are set to 0600 even if file already existed
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")

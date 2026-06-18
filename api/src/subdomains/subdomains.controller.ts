@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/c
 import { SubdomainsService } from './subdomains.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { ClaimSubdomainDto } from './dto/claim-subdomain.dto';
 
 @Controller('subdomains')
 @UseGuards(AuthGuard)
@@ -14,8 +15,8 @@ export class SubdomainsController {
   }
 
   @Post()
-  async claim(@CurrentUser() user: any, @Body('hostname') hostname: string) {
-    return this.subdomainsService.claim(user.id, hostname);
+  async claim(@CurrentUser() user: any, @Body() body: ClaimSubdomainDto) {
+    return this.subdomainsService.claim(user.id, body.hostname);
   }
 
   @Delete(':id')
