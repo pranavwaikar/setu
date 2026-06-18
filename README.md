@@ -268,47 +268,124 @@ You can run your own Setu gateway on any VPS. The stack is `docker-compose`-base
 | **Traefik** | **v3.x** (bundled with Coolify 4.x) | v2 uses different `HostRegexp` syntax — will silently break wildcard routing |
 | **Docker** | ≥ 24.x | Required by Coolify |
 | **Docker Compose** | ≥ 2.x (Compose V2) | Bundled with Docker Desktop / Coolify |
-| **DNS** | Wildcard `A` record | `*.yourdomain.com` → your server IP (required for tunnel subdomains) |
+| **DNS provider** | **Cloudflare** | Required for wildcard TLS certificate issuance via DNS-01 challenge |
+| **DNS records** | Wildcard `A` record | `*.yourdomain.com` → your server IP (required for tunnel subdomains) |
 
 > [!IMPORTANT]
 > **Traefik v3 is required.** The wildcard subdomain routing uses `HostRegexp` which changed syntax between Traefik v2 and v3. Coolify 4.x ships with Traefik v3 automatically — if you are on Coolify 3.x (which used Traefik v2), you must upgrade to Coolify 4.x before deploying Setu.
 
+> [!IMPORTANT]
+> **Your domain must be managed by Cloudflare.** Wildcard TLS certificates (`*.yourdomain.com`) require a DNS-01 challenge, which needs API access to your DNS provider. Setu's self-hosting setup is configured for Cloudflare. If your domain is with another provider (Namecheap, Route 53, etc.), you will need to swap the Traefik DNS provider accordingly.
+
 > [!WARNING]
 > **Wildcard DNS is mandatory.** Without a `*.yourdomain.com` A record pointing to your server, tunnel subdomains (e.g. `my-app.yourdomain.com`) will not resolve — the public URL shown by the CLI will be unreachable regardless of gateway configuration.
 
+---
+
 ### Deployment Steps
 
-1. **Install Coolify** (≥ 4.1.2) on your VPS:
-   ```bash
-   curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
-   ```
+#### 1. Install Coolify (≥ 4.1.2) on your VPS
 
-2. **Add a wildcard DNS record** in your DNS provider:
-   ```
-   Type: A
-   Name: *.yourdomain.com
-   Value: <your-server-IP>
-   TTL: 300
-   ```
+```bash
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+```
 
-3. **Set the environment variables** in your Coolify service before deploying:
+#### 2. Add DNS records in Cloudflare
 
-   | Variable | Example Value | Description |
-   |---|---|---|
-   | `PUBLIC_DOMAIN` | `https://setu.yourdomain.com` | Public URL of your Setu instance |
-   | `TUNNEL_DOMAIN` | `setu.yourdomain.com` | Base domain used to derive tunnel subdomains |
-   | `GATEWAY_API_TOKEN` | `your-secret-token` | Shared secret between gateway and API |
-   | `JWT_SECRET` | `your-jwt-secret` | Secret for signing user JWTs |
+In your Cloudflare dashboard for `yourdomain.com`, add **two** A records:
 
-4. **Deploy** by pointing Coolify at this repository and selecting `docker-compose.yml`. Coolify merges the Traefik wildcard routing labels from the compose file with its own auto-generated labels automatically.
+| Type | Name | Value | Proxy status |
+|---|---|---|---|
+| A | `yourdomain.com` | `<your-server-IP>` | DNS only (grey cloud) |
+| A | `*` | `<your-server-IP>` | DNS only (grey cloud) |
 
-5. **Verify** the gateway is reachable:
-   ```bash
-   curl https://setu.yourdomain.com/health
-   # Expected: {"status":"ok"}
-   ```
+The `*` wildcard record covers all subdomains — including multi-level ones like `my-app.setu.yourdomain.com`. This is a Cloudflare-specific behaviour: Cloudflare's wildcard matches subdomains at any depth, whereas standard DNS wildcards only cover one level. Coolify and Traefik handle all routing from there.
+
+> [!WARNING]
+> Set both records to **"DNS only"** (grey cloud), not "Proxied" (orange cloud). Cloudflare's proxy intercepts WebSocket connections and will break tunnel sessions.
+
+#### 3. Create a Cloudflare API Token
+
+This token lets Traefik temporarily create a DNS TXT record to prove domain ownership to Let's Encrypt when issuing the wildcard certificate.
+
+1. Log into [dash.cloudflare.com](https://dash.cloudflare.com)
+2. Click your **profile icon** (top right) → **"My Profile"**
+3. Left sidebar → **"API Tokens"** → **"Create Token"**
+4. Click **"Use template"** next to **"Edit zone DNS"**
+5. Under **Zone Resources**: set to `Include → Specific zone → yourdomain.com`
+6. Click **"Continue to summary"** → **"Create Token"**
+7. **Copy the token shown** — it is only displayed once
+
+#### 4. Add the DNS-01 certresolver to Traefik via Coolify
+
+In the Coolify dashboard, navigate to:
+
+**Dashboard → Servers → _your server name_ → Proxy → Configuration**
+
+You will see the `coolify-proxy` Docker Compose file. Edit it to add an `environment:` section and five new `command:` lines:
+
+**Add the `environment:` block** (place it after `extra_hosts:` and before `networks:`):
+
+```yaml
+    environment:
+      - CF_DNS_API_TOKEN=PASTE_YOUR_CLOUDFLARE_TOKEN_HERE
+```
+
+**Add these 5 lines at the end of the `command:` block** (before `labels:`):
+
+```yaml
+      - '--certificatesresolvers.letsencrypt-dns.acme.dnschallenge=true'
+      - '--certificatesresolvers.letsencrypt-dns.acme.dnschallenge.provider=cloudflare'
+      - '--certificatesresolvers.letsencrypt-dns.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53'
+      - '--certificatesresolvers.letsencrypt-dns.acme.storage=/traefik/acme-dns.json'
+      - '--certificatesresolvers.letsencrypt-dns.acme.email=your-email@example.com'
+```
+
+After editing, click **"Save"** then click the **"Restart Proxy"** button on the same page. Traefik will restart with the new DNS certresolver active.
+
+#### 5. Set the environment variables in your Coolify service
+
+Before deploying, configure these environment variables in your Coolify service settings:
+
+| Variable | Example Value | Description |
+|---|---|---|
+| `PUBLIC_DOMAIN` | `https://setu.yourdomain.com` | Public URL of your Setu instance |
+| `TUNNEL_DOMAIN` | `setu.yourdomain.com` | Base domain used to derive tunnel subdomains |
+| `GATEWAY_API_TOKEN` | `your-secret-token` | Shared secret between gateway and API |
+| `JWT_SECRET` | `your-jwt-secret` | Secret for signing user JWTs |
+
+#### 6. Deploy Setu
+
+Point Coolify at this repository and select `docker-compose.yml` as the compose file. Coolify automatically merges the Traefik wildcard routing labels from the compose file with its own auto-generated labels.
+
+#### 7. Verify everything is working
+
+**Gateway health:**
+```bash
+curl https://setu.yourdomain.com/health
+# Expected: {"status":"ok"}
+```
+
+**Wildcard TLS certificate** (run after ~60 seconds — Let's Encrypt issuance takes a moment):
+```bash
+curl -v https://any-name.setu.yourdomain.com/health 2>&1 | grep "subject:"
+# Expected: subject: CN=*.setu.yourdomain.com
+# (not "TRAEFIK DEFAULT CERT")
+```
+
+Once the wildcard cert is issued, all tunnel subdomains will show the green padlock 🔒 in browsers with no warnings.
 
 ---
+
+### How the wildcard TLS works (background)
+
+Standard Let's Encrypt certificates are issued via **HTTP-01 challenge** — Let's Encrypt makes a request to your server to verify ownership. This only works for exact hostnames.
+
+Wildcard certificates (`*.setu.yourdomain.com`) require **DNS-01 challenge** — Let's Encrypt asks you to create a specific `_acme-challenge` TXT record in your DNS zone. Traefik uses the Cloudflare API token to create and delete this TXT record automatically. After validation, a single certificate covers every tunnel subdomain.
+
+---
+
+
 
 ## Building from Source
 
