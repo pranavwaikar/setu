@@ -256,6 +256,60 @@ Environment variables:
 
 ---
 
+## Self-Hosting
+
+You can run your own Setu gateway on any VPS. The stack is `docker-compose`-based and fronted by Traefik (managed via Coolify).
+
+### Prerequisites
+
+| Requirement | Exact Version | Notes |
+|---|---|---|
+| **Coolify** | **≥ 4.1.2** | Manages deployments, TLS, and Traefik |
+| **Traefik** | **v3.x** (bundled with Coolify 4.x) | v2 uses different `HostRegexp` syntax — will silently break wildcard routing |
+| **Docker** | ≥ 24.x | Required by Coolify |
+| **Docker Compose** | ≥ 2.x (Compose V2) | Bundled with Docker Desktop / Coolify |
+| **DNS** | Wildcard `A` record | `*.yourdomain.com` → your server IP (required for tunnel subdomains) |
+
+> [!IMPORTANT]
+> **Traefik v3 is required.** The wildcard subdomain routing uses `HostRegexp` which changed syntax between Traefik v2 and v3. Coolify 4.x ships with Traefik v3 automatically — if you are on Coolify 3.x (which used Traefik v2), you must upgrade to Coolify 4.x before deploying Setu.
+
+> [!WARNING]
+> **Wildcard DNS is mandatory.** Without a `*.yourdomain.com` A record pointing to your server, tunnel subdomains (e.g. `my-app.yourdomain.com`) will not resolve — the public URL shown by the CLI will be unreachable regardless of gateway configuration.
+
+### Deployment Steps
+
+1. **Install Coolify** (≥ 4.1.2) on your VPS:
+   ```bash
+   curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+   ```
+
+2. **Add a wildcard DNS record** in your DNS provider:
+   ```
+   Type: A
+   Name: *.yourdomain.com
+   Value: <your-server-IP>
+   TTL: 300
+   ```
+
+3. **Set the environment variables** in your Coolify service before deploying:
+
+   | Variable | Example Value | Description |
+   |---|---|---|
+   | `PUBLIC_DOMAIN` | `https://setu.yourdomain.com` | Public URL of your Setu instance |
+   | `TUNNEL_DOMAIN` | `setu.yourdomain.com` | Base domain used to derive tunnel subdomains |
+   | `GATEWAY_API_TOKEN` | `your-secret-token` | Shared secret between gateway and API |
+   | `JWT_SECRET` | `your-jwt-secret` | Secret for signing user JWTs |
+
+4. **Deploy** by pointing Coolify at this repository and selecting `docker-compose.yml`. Coolify merges the Traefik wildcard routing labels from the compose file with its own auto-generated labels automatically.
+
+5. **Verify** the gateway is reachable:
+   ```bash
+   curl https://setu.yourdomain.com/health
+   # Expected: {"status":"ok"}
+   ```
+
+---
+
 ## Building from Source
 
 ```bash

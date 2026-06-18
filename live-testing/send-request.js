@@ -1,11 +1,15 @@
-// node live-testing/send-request.js http://myapp-pranav-waikar.setu.helios-logic.com
+// node live-testing/send-request.js https://my-app-pranav-waikar.setu.helios-logic.com
+
+// Traefik redirects HTTP → HTTPS. Node.js fetch follows the redirect but rejects
+// the self-signed wildcard cert. This disables that check for this dev-only script.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const baseUrl = process.argv[2];
 
 if (!baseUrl) {
   console.error("Error: Please provide a base URL as an argument.");
   console.error("Usage: node live-testing/send-request.js <url>");
-  console.error("Example: node live-testing/send-request.js http://myapp-pranav-waikar.setu.helios-logic.com");
+  console.error("Example: node live-testing/send-request.js https://my-app-pranav-waikar.setu.helios-logic.com");
   process.exit(1);
 }
 
@@ -37,6 +41,7 @@ async function sendRequest(method, body = null) {
     console.log(`----------------------------------------\n`);
   } catch (error) {
     console.error(`❌ Error sending ${method} request:`, error.message);
+    if (error.cause) console.error(`   Cause:`, error.cause.message ?? error.cause);
     console.log(`----------------------------------------\n`);
   }
 }
