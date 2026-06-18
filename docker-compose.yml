@@ -114,16 +114,11 @@ services:
       - "traefik.http.routers.setu-tunnel-https.tls.certresolver=letsencrypt-dns"
       - "traefik.http.routers.setu-tunnel-https.tls.domains[0].main=${TUNNEL_DOMAIN:-setu.helios-logic.com}"
       - "traefik.http.routers.setu-tunnel-https.tls.domains[0].sans=*.${TUNNEL_DOMAIN:-setu.helios-logic.com}"
-      - "traefik.http.routers.setu-tunnel-https.service=setu-tunnel-svc"
 
       # HTTP wildcard router (port 80) — redirected to HTTPS by Coolify's middleware
       - "traefik.http.routers.setu-tunnel-http.rule=HostRegexp(`^[a-z0-9-]+[.]${TUNNEL_DOMAIN:-setu.helios-logic.com}$`)"
       - "traefik.http.routers.setu-tunnel-http.entrypoints=http"
       - "traefik.http.routers.setu-tunnel-http.middlewares=redirect-to-https"
-      - "traefik.http.routers.setu-tunnel-http.service=setu-tunnel-svc"
-
-      # Single load-balancer service pointing to the gateway's internal port
-      - "traefik.http.services.setu-tunnel-svc.loadbalancer.server.port=8080"
 
 networks:
   default:
