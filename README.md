@@ -134,6 +134,19 @@ setu start
 
 ---
 
+## Local HTTP Request/Response Inspection UI
+
+When active tunnels are running (either via `setu expose` or `setu start`), a local HTTP inspection server will run in the background (defaulting to port `4500` or incrementing if bound).
+
+Open your browser to:
+👉 **[http://localhost:4500/inspect](http://localhost:4500/inspect)**
+
+From this dashboard, you can:
+*   **Inspect Traffic**: Visually inspect all incoming HTTP payloads, headers, cookies, and response status codes in real time as they proxy down the tunnel.
+*   **1-Click Webhook Replay**: Instantly clone and replay any captured HTTP request or webhook payload back to your local application port with a single click. This eliminates the need to manually trigger developer portals (like Stripe, GitHub, or Twilio) while debugging.
+
+---
+
 ## Multi-Tunneling & Visual Configuration (`setup` & `start`)
 
 For complex applications (like microservices or project structures with both a frontend and backend), running individual `setu expose` commands can become cumbersome. Setu provides a visual setup panel and a multi-tunnel starter to simplify this.

@@ -154,7 +154,15 @@ Once connected, you will see a success status:
 
 You can now open `http://my-app.lvh.me:8080` in your web browser, and all traffic will proxy through the Gateway directly to your local port `3000`.
 
-### 4. Extra CLI Commands
+### 4. Local Request & Response Inspector
+When active tunnels are running, a background HTTP inspection server is launched locally (defaulting to port `4500`). Open your browser to:
+👉 `http://localhost:4500/inspect`
+
+You will see a real-time web dashboard displaying the methods, paths, request headers, cookies, payloads, and response status codes/bodies for all streams passing through the active tunnel.
+
+It also includes a **1-Click Webhook Replay** utility. With a single click on any recorded transaction, the local server clones and re-dispatches the request payload directly to your local application port, making it easy to replay Stripe, GitHub, or custom webhooks without triggering external systems manually.
+
+### 5. Extra CLI Commands
 - **Check config status**:
   ```bash
   ./setu status

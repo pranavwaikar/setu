@@ -1109,6 +1109,18 @@ export default function Home() {
                           setu expose 5432 --subdomain mydb --tcp
                         </code>
                       </div>
+                      <div>
+                        <p className="font-semibold text-zinc-300">5. Local HTTP Inspection UI</p>
+                        <p className="text-zinc-500 mt-0.5">Inspect incoming headers, payloads, cookies, and responses in real time at:</p>
+                        <a 
+                          href="http://localhost:4500/inspect" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-purple-400 hover:underline text-[10px] font-mono"
+                        >
+                          http://localhost:4500/inspect
+                        </a>
+                      </div>
                       <div className="pt-2 border-t border-zinc-900/60">
                         <a 
                           href="https://github.com/pranavwaikar/setu/blob/main/README.md" 

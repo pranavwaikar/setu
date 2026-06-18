@@ -85,6 +85,25 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    labels:
+      # ── Wildcard tunnel subdomain routing ──────────────────────────────────
+      # Routes *.setu.helios-logic.com → gateway so tunnel subdomains work.
+      # Coolify merges these with its own auto-generated labels on redeploy.
+
+      # HTTPS wildcard router (port 443)
+      - "traefik.http.routers.setu-tunnel-https.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.setu.helios-logic.com`)"
+      - "traefik.http.routers.setu-tunnel-https.entrypoints=https"
+      - "traefik.http.routers.setu-tunnel-https.tls=true"
+      - "traefik.http.routers.setu-tunnel-https.service=setu-tunnel-svc"
+
+      # HTTP wildcard router (port 80) — redirected to HTTPS by Coolify's middleware
+      - "traefik.http.routers.setu-tunnel-http.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.setu.helios-logic.com`)"
+      - "traefik.http.routers.setu-tunnel-http.entrypoints=http"
+      - "traefik.http.routers.setu-tunnel-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.setu-tunnel-http.service=setu-tunnel-svc"
+
+      # Single load-balancer service pointing to the gateway's internal port
+      - "traefik.http.services.setu-tunnel-svc.loadbalancer.server.port=8080"
 
 volumes:
   pgdata:

@@ -265,6 +265,8 @@ func main() {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			inspectPort := startInspectServer()
+
 			cfg, err := loadConfig()
 			if err != nil {
 				log.Fatalf("Failed to load config: %v", err)
@@ -297,6 +299,9 @@ func main() {
 			fmt.Println(" --------------------------------------------------")
 			fmt.Printf(" Status:     ONLINE\n")
 			fmt.Printf(" Forwarding: %s -> 127.0.0.1:%s\n", publicURL, localPort)
+			if inspectPort > 0 {
+				fmt.Printf(" Inspect UI: http://127.0.0.1:%d/inspect\n", inspectPort)
+			}
 			fmt.Println(" --------------------------------------------------")
 			fmt.Println(" Press Ctrl+C to stop tunnel connection")
 			fmt.Println(" Showcase Traffic logs:")
@@ -940,6 +945,12 @@ func handleProxyStream(stream net.Conn, localPort string, publicDomain string, h
 	timeStr := time.Now().Format("15:04:05")
 	fmt.Printf("[%s] %-6s %s%s -> %s\n", timeStr, req.Method, publicDomain, req.URL.Path, targetHostPort)
 
+	var reqBodyBytes []byte
+	if req.Body != nil {
+		reqBodyBytes, _ = io.ReadAll(io.LimitReader(req.Body, 1024*1024))
+		req.Body = io.NopCloser(bytes.NewBuffer(reqBodyBytes))
+	}
+
 	if hostHeader != "" {
 		if hostHeader == "rewrite" {
 			port := localPort
@@ -968,16 +979,39 @@ func handleProxyStream(stream net.Conn, localPort string, publicDomain string, h
 		return
 	}
 
-	errChan := make(chan error, 2)
-	go func() {
-		_, err := io.Copy(localConn, reader)
-		errChan <- err
-	}()
-	go func() {
-		_, err := io.Copy(stream, localConn)
-		errChan <- err
-	}()
-	<-errChan
+	resp, err := http.ReadResponse(bufio.NewReader(localConn), req)
+	if err != nil {
+		log.Printf("[Proxy Error] Failed to read response: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var respBodyBytes []byte
+	if resp.Body != nil {
+		respBodyBytes, _ = io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+		resp.Body = io.NopCloser(bytes.NewBuffer(respBodyBytes))
+	}
+
+	tx := HTTPTransaction{
+		ID:             fmt.Sprintf("%d", time.Now().UnixNano()),
+		Timestamp:      time.Now().Format("15:04:05.000"),
+		Method:         req.Method,
+		URL:            fmt.Sprintf("http://%s%s", publicDomain, req.URL.Path),
+		Path:           req.URL.Path,
+		LocalTarget:    scheme + "://" + targetHostPort,
+		ReqHeaders:     req.Header,
+		ReqBody:        string(reqBodyBytes),
+		RespStatus:     resp.StatusCode,
+		RespStatusText: strings.TrimPrefix(resp.Status, fmt.Sprintf("%d ", resp.StatusCode)),
+		RespHeaders:    resp.Header,
+		RespBody:       string(respBodyBytes),
+	}
+	addTransaction(tx)
+
+	err = resp.Write(stream)
+	if err != nil {
+		log.Printf("[Proxy Error] Failed to write response to stream: %v", err)
+	}
 }
 
 var startCmd = &cobra.Command{
@@ -992,6 +1026,8 @@ var startCmd = &cobra.Command{
 		if cfg.ApiKey == "" {
 			log.Fatalf("Authentication required. Run 'setu login' or 'setu setup' first.")
 		}
+
+		inspectPort := startInspectServer()
 
 		if len(cfg.PortMappings) == 0 {
 			fmt.Println("No port mappings configured. Please run 'setu setup' to configure subdomains and port mappings.")
@@ -1020,6 +1056,9 @@ var startCmd = &cobra.Command{
 		for _, m := range cfg.PortMappings {
 			publicDomain := getPublicDisplayURL(cfg.Gateway, m.Subdomain)
 			fmt.Printf("   http://127.0.0.1:%-5s is mapped to http://%s\n", m.Port, publicDomain)
+		}
+		if inspectPort > 0 {
+			fmt.Printf(" Inspect UI:      http://127.0.0.1:%d/inspect\n", inspectPort)
 		}
 		fmt.Println(" --------------------------------------------------")
 		fmt.Println(" Showcase Traffic logs:")
@@ -1197,4 +1236,215 @@ func startHeartbeat(ctx context.Context, conn *websocket.Conn) {
 			}
 		}
 	}
+}
+
+type HTTPTransaction struct {
+	ID             string              `json:"id"`
+	Timestamp      string              `json:"timestamp"`
+	Method         string              `json:"method"`
+	URL            string              `json:"url"`
+	Path           string              `json:"path"`
+	LocalTarget    string              `json:"local_target"`
+	ReqHeaders     map[string][]string `json:"req_headers"`
+	ReqBody        string              `json:"req_body"`
+	RespStatus     int                 `json:"resp_status"`
+	RespStatusText string              `json:"resp_status_text"`
+	RespHeaders    map[string][]string `json:"resp_headers"`
+	RespBody       string              `json:"resp_body"`
+}
+
+var (
+	txMu         sync.RWMutex
+	transactions []HTTPTransaction
+
+	clientsMu      sync.Mutex
+	inspectClients = make(map[*websocket.Conn]bool)
+	wsUpgrader     = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+	inspectServerOnce sync.Once
+	inspectPort       int
+)
+
+func addTransaction(tx HTTPTransaction) {
+	txMu.Lock()
+	defer txMu.Unlock()
+	transactions = append([]HTTPTransaction{tx}, transactions...)
+	if len(transactions) > 100 {
+		transactions = transactions[:100]
+	}
+
+	clientsMu.Lock()
+	defer clientsMu.Unlock()
+	for client := range inspectClients {
+		_ = client.WriteJSON(tx)
+	}
+}
+
+func startInspectServer() int {
+	inspectServerOnce.Do(func() {
+		port := 4500
+		for port < 4550 {
+			ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+			if err == nil {
+				ln.Close()
+				inspectPort = port
+				go runInspectServer(port)
+				return
+			}
+			port++
+		}
+	})
+	return inspectPort
+}
+
+func runInspectServer(port int) {
+	mux := http.NewServeMux()
+
+	subFS, err := fs.Sub(setupUIFS, "setup-ui")
+	if err != nil {
+		log.Printf("[Inspect UI Error] Failed to load assets: %v", err)
+		return
+	}
+
+	mux.HandleFunc("/inspect", func(w http.ResponseWriter, r *http.Request) {
+		data, err := subFS.Open("inspect.html")
+		if err != nil {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		defer data.Close()
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		io.Copy(w, data)
+	})
+
+	mux.HandleFunc("/inspect/replay", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			http.Error(w, "Missing id parameter", http.StatusBadRequest)
+			return
+		}
+
+		txMu.RLock()
+		var foundTx *HTTPTransaction
+		for _, tx := range transactions {
+			if tx.ID == id {
+				foundTx = &tx
+				break
+			}
+		}
+		txMu.RUnlock()
+
+		if foundTx == nil {
+			http.Error(w, "Transaction not found", http.StatusNotFound)
+			return
+		}
+
+		// Replay the request directly to the local target
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: insecureSkipVerifyFlag,
+				},
+			},
+			Timeout: 10 * time.Second,
+		}
+
+		targetURL := foundTx.LocalTarget + foundTx.Path
+		req, err := http.NewRequest(foundTx.Method, targetURL, strings.NewReader(foundTx.ReqBody))
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   "Failed to create request: " + err.Error(),
+			})
+			return
+		}
+
+		// Copy original headers
+		for name, values := range foundTx.ReqHeaders {
+			for _, value := range values {
+				req.Header.Add(name, value)
+			}
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadGateway)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   "Failed to connect to local target: " + err.Error(),
+			})
+			return
+		}
+		defer resp.Body.Close()
+
+		respBodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+
+		// Record the replayed response in log list
+		replayedTx := HTTPTransaction{
+			ID:             fmt.Sprintf("%d", time.Now().UnixNano()),
+			Timestamp:      time.Now().Format("15:04:05.000"),
+			Method:         foundTx.Method,
+			URL:            foundTx.URL,
+			Path:           foundTx.Path,
+			LocalTarget:    foundTx.LocalTarget,
+			ReqHeaders:     foundTx.ReqHeaders,
+			ReqBody:        foundTx.ReqBody,
+			RespStatus:     resp.StatusCode,
+			RespStatusText: strings.TrimPrefix(resp.Status, fmt.Sprintf("%d ", resp.StatusCode)),
+			RespHeaders:    resp.Header,
+			RespBody:       string(respBodyBytes),
+		}
+		addTransaction(replayedTx)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"id":      replayedTx.ID,
+		})
+	})
+
+	mux.HandleFunc("/inspect/ws", func(w http.ResponseWriter, r *http.Request) {
+		conn, err := wsUpgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Printf("[Inspect WS Upgrade Error] %v", err)
+			return
+		}
+
+		clientsMu.Lock()
+		inspectClients[conn] = true
+		clientsMu.Unlock()
+
+		txMu.RLock()
+		for i := len(transactions) - 1; i >= 0; i-- {
+			_ = conn.WriteJSON(transactions[i])
+		}
+		txMu.RUnlock()
+
+		defer func() {
+			clientsMu.Lock()
+			delete(inspectClients, conn)
+			clientsMu.Unlock()
+			conn.Close()
+		}()
+
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				break
+			}
+		}
+	})
+
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	log.Printf("[Inspect Dashboard] Running at http://%s/inspect", addr)
+	server := &http.Server{Addr: addr, Handler: mux}
+	_ = server.ListenAndServe()
 }
