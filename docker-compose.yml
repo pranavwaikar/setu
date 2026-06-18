@@ -34,6 +34,7 @@ services:
       GATEWAY_API_TOKEN: ${GATEWAY_API_TOKEN:-default-gateway-secret}
       PORT: 4000
       PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-https://setu.helios-logic.com}
+      NODE_ENV: ${NODE_ENV:-development}
     depends_on:
       postgres:
         condition: service_healthy
