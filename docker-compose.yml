@@ -91,7 +91,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - default
+      - coolify  # Must be in Traefik's network so it can reach this container
     labels:
+      # Enable Traefik routing for this container
+      - "traefik.enable=true"
+      # Tell Traefik which network to use for backend connections
+      - "traefik.docker.network=coolify"
+
       # ── Wildcard tunnel subdomain routing ──────────────────────────────────
       # Routes *.${TUNNEL_DOMAIN} → gateway so tunnel subdomains work.
       # Coolify merges these with its own auto-generated labels on redeploy.
@@ -116,6 +124,12 @@ services:
 
       # Single load-balancer service pointing to the gateway's internal port
       - "traefik.http.services.setu-tunnel-svc.loadbalancer.server.port=8080"
+
+networks:
+  default:
+    driver: bridge
+  coolify:
+    external: true  # Traefik's shared network managed by Coolify
 
 volumes:
   pgdata:

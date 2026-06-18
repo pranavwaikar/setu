@@ -798,10 +798,15 @@ func runSetupServer(cfg *Config) {
 func buildWebSocketURL(gateway, subdomain, port string, auth string, tunnelType string) string {
 	rawURL := gateway
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") && !strings.HasPrefix(rawURL, "ws://") && !strings.HasPrefix(rawURL, "wss://") {
-		if rawURL == "setu.helios-logic.com" {
-			rawURL = "wss://" + rawURL
-		} else {
+		// No scheme provided — infer from the address:
+		// Use plain ws:// only for localhost / 127.0.0.1, or any host:port combo.
+		// Use wss:// for all bare hostnames (production domains on port 443).
+		isLocal := strings.HasPrefix(rawURL, "localhost") || strings.HasPrefix(rawURL, "127.0.0.1")
+		hasPort := strings.Contains(rawURL, ":")
+		if isLocal || hasPort {
 			rawURL = "ws://" + rawURL
+		} else {
+			rawURL = "wss://" + rawURL
 		}
 	}
 
