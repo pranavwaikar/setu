@@ -27,11 +27,11 @@ services:
     # No inline command — the Dockerfile ENTRYPOINT (entrypoint.sh) handles
     # waiting for Postgres, running Prisma, then starting the server.
     environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/setu?schema=public
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/setu?schema=public}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      JWT_SECRET: supersecretjwtkey
-      GATEWAY_API_TOKEN: default-gateway-secret
+      JWT_SECRET: ${JWT_SECRET:-supersecretjwtkey}
+      GATEWAY_API_TOKEN: ${GATEWAY_API_TOKEN:-default-gateway-secret}
       PORT: 4000
       PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-https://setu.helios-logic.com}
     depends_on:
@@ -49,6 +49,11 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+      args:
+        # Baked into the Next.js build at image-build time.
+        # Set TUNNEL_DOMAIN in your environment before deploying.
+        NEXT_PUBLIC_TUNNEL_DOMAIN: ${TUNNEL_DOMAIN:-setu.helios-logic.com}
+        NEXT_PUBLIC_PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-https://setu.helios-logic.com}
     container_name: setu_dashboard
     environment:
       INTERNAL_API_URL: http://api:4000
@@ -71,7 +76,7 @@ services:
       API_SERVER_URL: http://api:4000
       INTERNAL_API_URL: http://api:4000
       DASHBOARD_URL: http://dashboard:3000
-      GATEWAY_API_TOKEN: default-gateway-secret
+      GATEWAY_API_TOKEN: ${GATEWAY_API_TOKEN:-default-gateway-secret}
       TUNNEL_DOMAIN: ${TUNNEL_DOMAIN:-setu.helios-logic.com}
       PORT: 8080
     ports:
@@ -87,22 +92,23 @@ services:
       start_period: 30s
     labels:
       # ── Wildcard tunnel subdomain routing ──────────────────────────────────
-      # Routes *.setu.helios-logic.com → gateway so tunnel subdomains work.
+      # Routes *.${TUNNEL_DOMAIN} → gateway so tunnel subdomains work.
       # Coolify merges these with its own auto-generated labels on redeploy.
+      # TUNNEL_DOMAIN is set via environment variable (default: setu.helios-logic.com).
 
       # HTTPS wildcard router (port 443)
       # Uses the letsencrypt-dns certresolver (Cloudflare DNS-01 challenge)
-      # so that *.setu.helios-logic.com gets a valid, browser-trusted cert.
-      - "traefik.http.routers.setu-tunnel-https.rule=HostRegexp(`^[a-z0-9-]+\\.setu\\.helios-logic\\.com$`)"
+      # so that *.${TUNNEL_DOMAIN} gets a valid, browser-trusted cert.
+      - "traefik.http.routers.setu-tunnel-https.rule=HostRegexp(`^[a-z0-9-]+\.${TUNNEL_DOMAIN:-setu.helios-logic.com}$`)"
       - "traefik.http.routers.setu-tunnel-https.entrypoints=https"
       - "traefik.http.routers.setu-tunnel-https.tls=true"
       - "traefik.http.routers.setu-tunnel-https.tls.certresolver=letsencrypt-dns"
-      - "traefik.http.routers.setu-tunnel-https.tls.domains[0].main=setu.helios-logic.com"
-      - "traefik.http.routers.setu-tunnel-https.tls.domains[0].sans=*.setu.helios-logic.com"
+      - "traefik.http.routers.setu-tunnel-https.tls.domains[0].main=${TUNNEL_DOMAIN:-setu.helios-logic.com}"
+      - "traefik.http.routers.setu-tunnel-https.tls.domains[0].sans=*.${TUNNEL_DOMAIN:-setu.helios-logic.com}"
       - "traefik.http.routers.setu-tunnel-https.service=setu-tunnel-svc"
 
       # HTTP wildcard router (port 80) — redirected to HTTPS by Coolify's middleware
-      - "traefik.http.routers.setu-tunnel-http.rule=HostRegexp(`^[a-z0-9-]+\\.setu\\.helios-logic\\.com$`)"
+      - "traefik.http.routers.setu-tunnel-http.rule=HostRegexp(`^[a-z0-9-]+\.${TUNNEL_DOMAIN:-setu.helios-logic.com}$`)"
       - "traefik.http.routers.setu-tunnel-http.entrypoints=http"
       - "traefik.http.routers.setu-tunnel-http.middlewares=redirect-to-https"
       - "traefik.http.routers.setu-tunnel-http.service=setu-tunnel-svc"

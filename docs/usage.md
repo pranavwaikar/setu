@@ -176,14 +176,44 @@ It also includes a **1-Click Webhook Replay** utility. With a single click on an
 
 ## Production Deployment via Docker Compose
 
-In a production environment (such as on a Coolify server or virtual machine), you can run the entire platform orchestrating PostgreSQL and other services using Docker Compose:
+In a production environment (such as on a Coolify server or virtual machine), you can run the entire platform orchestrating PostgreSQL and other services using Docker Compose.
 
-1. Edit env variables inside `docker-compose.yml` to specify your public root domain (e.g., `TUNNEL_DOMAIN=yourdomain.com`).
-2. Run the compose stack:
-   ```bash
-   docker compose up --build -d
+We have made it easy to configure your custom domain using environment variables. The configuration is driven by two main environment variables:
+- `TUNNEL_DOMAIN`: The base domain used to derive tunnel subdomains (e.g., `setu.yourdomain.com`).
+- `PUBLIC_DOMAIN`: The full public URL of your Setu instance (e.g., `https://setu.yourdomain.com`).
+
+### Configuration & Deployment Steps
+
+1. **Set up Environment Variables**: Create a `.env` file in the root directory (based on the [.env.example](file:///Users/pranavwaikar/Documents/GitHub/setu/.env.example) template) or set them in your terminal session before launching the containers:
+   ```env
+   TUNNEL_DOMAIN=setu.yourdomain.com
+   PUBLIC_DOMAIN=https://setu.yourdomain.com
+   GATEWAY_API_TOKEN=your-secret-token
+   JWT_SECRET=your-jwt-secret
    ```
-3. Configure your DNS provider to add a wildcard `A` record pointing to your server's IP address:
-   ```text
-   *.yourdomain.com  ->  YOUR_SERVER_IP
-   ```
+
+   > [!IMPORTANT]
+   > **Build-Time Arguments**: The Next.js dashboard compiles these domain variables into the client-side JavaScript bundle during the image build process. They are passed as build arguments in `docker-compose.yml` (`NEXT_PUBLIC_TUNNEL_DOMAIN` and `NEXT_PUBLIC_PUBLIC_DOMAIN`). Therefore, you **must set these environment variables before building**. If you change these variables later, you must run a full rebuild (`docker compose build --no-cache dashboard` or `docker compose up --build -d`) to update the static frontend assets.
+
+2. **Deploy the stack**:
+   * **If using raw Docker Compose**: Run the following command:
+     ```bash
+     docker compose up --build -d
+     ```
+   * **If using Coolify**: Point Coolify to this repository, select `docker-compose.yml`, and configure the service domains:
+     * **`gateway`**: Configure the public domain/URL (e.g., `https://setu.yourdomain.com`).
+     * **`dashboard`**: **Keep the domain field empty**.
+     * **`api`**: **Keep the domain field empty**.
+     
+     > [!IMPORTANT]
+     > The gateway acts as the public entrypoint and handles proxying `/` requests to the dashboard and `/api/*` requests to the api service. Do not assign public domains to the dashboard or api services in Coolify.
+
+3. **Configure DNS records**:
+   Configure your DNS provider to add two A records pointing to your server's IP address:
+   
+   | Type | Name | Value | Proxy status |
+   |---|---|---|---|
+   | A | `yourdomain.com` | `<your-server-IP>` | DNS only (grey cloud) |
+   | A | `*` | `<your-server-IP>` | DNS only (grey cloud) |
+   
+   The `*` wildcard record is required so that any tunnel subdomain (e.g., `my-app.setu.yourdomain.com`) resolves to your gateway.

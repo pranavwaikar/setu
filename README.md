@@ -345,7 +345,7 @@ After editing, click **"Save"** then click the **"Restart Proxy"** button on the
 
 #### 5. Set the environment variables in your Coolify service
 
-Before deploying, configure these environment variables in your Coolify service settings:
+Before deploying, configure these environment variables in your Coolify service settings. These variables make it easy to configure your custom domain. A template is available in [.env.example](file:///Users/pranavwaikar/Documents/GitHub/setu/.env.example) for reference.
 
 | Variable | Example Value | Description |
 |---|---|---|
@@ -354,9 +354,23 @@ Before deploying, configure these environment variables in your Coolify service 
 | `GATEWAY_API_TOKEN` | `your-secret-token` | Shared secret between gateway and API |
 | `JWT_SECRET` | `your-jwt-secret` | Secret for signing user JWTs |
 
-#### 6. Deploy Setu
+> [!IMPORTANT]
+> **Build-Time Compilation:** Because Next.js compiles the dashboard's domain configuration (`NEXT_PUBLIC_TUNNEL_DOMAIN` and `NEXT_PUBLIC_PUBLIC_DOMAIN`) into the client-side JavaScript bundle during the Docker build process, the `TUNNEL_DOMAIN` and `PUBLIC_DOMAIN` environment variables **must be defined before deploying or building the service in Coolify**.
+> If you update these environment variables later, you **must trigger a redeploy with a full rebuild** of the dashboard service for the new domains to take effect in the browser UI.
 
-Point Coolify at this repository and select `docker-compose.yml` as the compose file. Coolify automatically merges the Traefik wildcard routing labels from the compose file with its own auto-generated labels.
+#### 6. Deploy Setu & Configure Service Domains
+
+1. Point Coolify at this repository and select `docker-compose.yml` as the compose file.
+2. **Configure Service Domains**:
+   In the Coolify dashboard for your application services:
+   * **`gateway`**: Configure the public domain/URL (e.g., `https://setu.yourdomain.com`). The gateway acts as the main entry point and multiplexes all public requests.
+   * **`dashboard`**: **Keep the domain field empty**.
+   * **`api`**: **Keep the domain field empty**.
+   
+   > [!IMPORTANT]
+   > Do not assign public domains to the `dashboard` or `api` services in Coolify. The gateway handles routing internally (proxying `/` requests to the dashboard service and `/api/*` requests to the API service).
+
+3. Deploy the service. Coolify automatically merges the Traefik wildcard routing labels from the compose file with its own auto-generated labels.
 
 #### 7. Verify everything is working
 

@@ -555,29 +555,25 @@ services:
 Environment variables:
 
 ```env
-DOMAIN=free.dev.setu.com
-
-POSTGRES_PASSWORD=
-
-JWT_SECRET=
-
-REDIS_URL=redis://redis:6379
-
-DATABASE_URL=
-
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
+TUNNEL_DOMAIN=setu.yourdomain.com
+PUBLIC_DOMAIN=https://setu.yourdomain.com
+GATEWAY_API_TOKEN=your-secret-token
+JWT_SECRET=your-jwt-secret
 ```
+
+> [!IMPORTANT]
+> **Build-Time Compilation:** The dashboard utilizes `NEXT_PUBLIC_TUNNEL_DOMAIN` and `NEXT_PUBLIC_PUBLIC_DOMAIN` build arguments. When deploying via Coolify, ensure `TUNNEL_DOMAIN` and `PUBLIC_DOMAIN` are defined in your Coolify service environment variables **before** triggering the build/deployment, as Next.js bakes these variables into the static bundle at build time.
 
 Deployment steps:
 
 1. Push repository.
 2. Connect repository in Coolify.
-3. Configure environment variables.
-4. Configure wildcard DNS.
-5. Deploy stack.
-6. Verify TLS.
-7. Create first admin account.
+3. Configure environment variables (`TUNNEL_DOMAIN`, `PUBLIC_DOMAIN`, `GATEWAY_API_TOKEN`, `JWT_SECRET`, etc.).
+4. Assign your public domain (e.g. `https://setu.yourdomain.com`) **only to the `gateway` service** in the Coolify domain configuration. Keep the domain configuration for the `dashboard` and `api` services **empty**.
+5. Configure wildcard DNS.
+6. Deploy stack (rebuild is required if domains change).
+7. Verify TLS.
+8. Create first admin account.
 
 ---
 

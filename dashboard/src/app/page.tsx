@@ -50,8 +50,14 @@ export default function Home() {
   const [newGeneratedKey, setNewGeneratedKey] = useState<string | null>(null);
 
   // Dynamic Domain Detection
-  const [baseDomain, setBaseDomain] = useState('setu.helios-logic.com');
-  const [baseDomainWithPort, setBaseDomainWithPort] = useState('setu.helios-logic.com');
+  // Initial value comes from the build-time env var so SSR/first-paint is correct.
+  // The useEffect below then syncs it to the actual browser hostname at runtime.
+  const [baseDomain, setBaseDomain] = useState(
+    process.env.NEXT_PUBLIC_TUNNEL_DOMAIN || 'setu.helios-logic.com'
+  );
+  const [baseDomainWithPort, setBaseDomainWithPort] = useState(
+    process.env.NEXT_PUBLIC_TUNNEL_DOMAIN || 'setu.helios-logic.com'
+  );
   const [protocol, setProtocol] = useState('https:');
 
   // Authenticate user on load
@@ -376,7 +382,7 @@ export default function Home() {
                   </button>
                 </div>
                 <div className="text-zinc-500 mt-2 text-[10px]">
-                  {"\u003e Exposing 127.0.0.1:3000 -> https://my-app-jhon-cena.setu.helios-logic.com"}
+                  {`> Exposing 127.0.0.1:3000 -> https://my-app-jhon-cena.${baseDomain}`}
                 </div>
               </div>
             </div>
@@ -390,7 +396,7 @@ export default function Home() {
               </div>
               <h3 className="text-sm font-bold text-white">Wildcard Routing</h3>
               <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-                Connect and reserve up to 10 custom user subdomains of your choice for free under setu.helios-logic.com. Expose web apps, APIs, and hooks instantly.
+                Connect and reserve up to 10 custom user subdomains of your choice for free under {baseDomain}. Expose web apps, APIs, and hooks instantly.
               </p>
             </div>
             <div className="p-6 rounded-xl border border-zinc-900 bg-zinc-950/40 text-left">
@@ -1139,7 +1145,7 @@ export default function Home() {
                 <div className="mt-8 pt-6 border-t border-zinc-900">
                   <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">How it works</h4>
                   <pre className="p-4 rounded-lg bg-zinc-950/80 border border-zinc-900 font-mono text-[10px] text-zinc-400 leading-relaxed overflow-x-auto">
-{`Public Request ➔ https://${subdomains[0]?.hostname || 'your-subdomain'}.setu.helios-logic.com
+{`Public Request ➔ https://${subdomains[0]?.hostname || 'your-subdomain'}.${baseDomain}
                        │
                        ▼ (TLS Secured Ingress)
                   Setu Gateway (Single Entrypoint)
