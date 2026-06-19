@@ -136,15 +136,13 @@ We have made it easy to configure your custom domain using environment variables
      ```bash
      docker compose up --build -d
      ```
-    * **If using Coolify**: Point Coolify to this repository, select `docker-compose.yml`, and configure the service domains:
-      * **`gateway`**: Configure both the main public domain and wildcard domain (separated by a comma) in the **Domains** field, e.g., `https://setu.yourdomain.com, https://*.setu.yourdomain.com`.
-      * **`dashboard`**: **Keep the domain field empty**.
-      * **`api`**: **Keep the domain field empty**.
-      
-      > [!IMPORTANT]
-      > The gateway acts as the public entrypoint and handles proxying `/` requests to the dashboard and `/api/*` requests to the api service. Do not assign public domains to the dashboard or api services in Coolify.
-      > 
-      > Assigning the wildcard domain `https://*.setu.yourdomain.com` in the Coolify UI allows Traefik to automatically route both your control plane and wildcard tunnel subdomain requests to port `8080` of the gateway container dynamically.
+   * **If using Coolify**: Point Coolify to this repository, select `docker-compose.yml`, and configure the service domains:
+     * **`gateway`**: Configure the public domain/URL (e.g., `https://setu.yourdomain.com`).
+     * **`dashboard`**: **Keep the domain field empty**.
+     * **`api`**: **Keep the domain field empty**.
+     
+     > [!IMPORTANT]
+     > The gateway acts as the public entrypoint and handles proxying `/` requests to the dashboard and `/api/*` requests to the api service. Do not assign public domains to the dashboard or api services in Coolify.
 
 3. **Configure DNS records**:
    Configure your DNS provider to add two A records pointing to your server's IP address:

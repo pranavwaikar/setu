@@ -100,6 +100,30 @@ services:
       # Tell Traefik which network to use for backend connections
       - "traefik.docker.network=coolify"
 
+      # ── Wildcard tunnel subdomain routing ──────────────────────────────────
+      # Routes *.${TUNNEL_DOMAIN} → gateway so tunnel subdomains work.
+      # Coolify merges these with its own auto-generated labels on redeploy.
+      # TUNNEL_DOMAIN is set via environment variable (default: setu.helios-logic.com).
+
+      # HTTPS wildcard router (port 443)
+      # Uses the letsencrypt-dns certresolver (Cloudflare DNS-01 challenge)
+      # so that *.${TUNNEL_DOMAIN} gets a valid, browser-trusted cert.
+      - "traefik.http.routers.setu-tunnel-https.rule=HostRegexp(`^[a-z0-9-]+[.]setu.helios-logic.com$`)"
+      - "traefik.http.routers.setu-tunnel-https.entrypoints=https"
+      - "traefik.http.routers.setu-tunnel-https.tls=true"
+      - "traefik.http.routers.setu-tunnel-https.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.routers.setu-tunnel-https.tls.domains[0].main=setu.helios-logic.com"
+      - "traefik.http.routers.setu-tunnel-https.tls.domains[0].sans=*.setu.helios-logic.com"
+      - "traefik.http.routers.setu-tunnel-https.service=setu-tunnel-svc"
+
+      # HTTP wildcard router (port 80) — redirected to HTTPS by Coolify's middleware
+      - "traefik.http.routers.setu-tunnel-http.rule=HostRegexp(`^[a-z0-9-]+[.]setu.helios-logic.com$`)"
+      - "traefik.http.routers.setu-tunnel-http.entrypoints=http"
+      - "traefik.http.routers.setu-tunnel-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.setu-tunnel-http.service=setu-tunnel-svc"
+
+      # Single load-balancer service pointing to the gateway's internal port
+      - "traefik.http.services.setu-tunnel-svc.loadbalancer.server.port=8080"
 
 networks:
   default:
