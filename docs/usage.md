@@ -187,3 +187,149 @@ We have made it easy to configure your custom domain using environment variables
    | A | `*` | `<your-server-IP>` | DNS only (grey cloud) |
    
    The `*` wildcard record is required so that any tunnel subdomain (e.g., `my-app.setu.yourdomain.com`) resolves to your gateway.
+
+---
+
+## Deploying on a Raw Virtual Machine (AWS EC2, VPS, etc.)
+
+If you want to host Setu on a raw virtual machine (like an AWS EC2 instance, DigitalOcean Droplet, or Linode) without using Coolify, you can run the Docker Compose stack directly and front it with a reverse proxy like **Caddy** or **Nginx**.
+
+### 1. Prerequisites
+* A Linux virtual machine (e.g., Ubuntu) with Docker and Docker Compose installed.
+* Ports `80` (HTTP), `443` (HTTPS), and `22` (SSH) open in your security groups/firewall.
+* DNS records (apex and wildcard `*`) pointing to your instance's public IP.
+
+### 2. Configure and Start the Docker Compose Stack
+Clone the repository and set up your `.env` file as described in the [Configuration Steps](#configuration--deployment-steps). Since you are running Docker Compose directly on the host, the gateway container's internal port `8080` is exposed on host port `18080` by default.
+
+Start the stack:
+```bash
+docker compose up -d --build
+```
+
+### 3. Setup a Reverse Proxy with SSL
+You need a reverse proxy to handle incoming public traffic on ports `80`/`443` and route it to the gateway container on host port `18080`.
+
+#### Option A: Caddy (Recommended)
+Caddy is the simplest option because it handles SSL automatically. To support wildcard certificates (`*.yourdomain.com`), Caddy must be built with your DNS provider's plugin (e.g., Cloudflare) to solve the DNS-01 challenge.
+
+1. Build/Install Caddy with the Cloudflare DNS plugin:
+   ```bash
+   sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/xcaddy/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-xcaddy-archive-keyring.gpg
+   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/xcaddy/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-xcaddy.list
+   sudo apt update
+   sudo apt install xcaddy
+   xcaddy build --with github.com/caddy-dns/cloudflare
+   ```
+2. Create a `Caddyfile` (e.g., `/etc/caddy/Caddyfile`):
+   ```caddy
+   # Control plane and wildcard routing
+   setu.yourdomain.com, *.setu.yourdomain.com {
+       reverse_proxy 127.0.0.1:18080
+       
+       tls {
+           dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+       }
+   }
+   ```
+3. Run Caddy as a service:
+   ```bash
+   CLOUDFLARE_API_TOKEN=your_token caddy run --config /etc/caddy/Caddyfile
+   ```
+
+#### Option B: Nginx + Certbot
+1. Install Nginx and Certbot:
+   ```bash
+   sudo apt update
+   sudo apt install nginx certbot python3-certbot-dns-cloudflare -y
+   ```
+2. Obtain a wildcard certificate using Certbot (Cloudflare example):
+   Create `~/.secrets/certbot/cloudflare.ini`:
+   ```ini
+   dns_cloudflare_api_token = your_cloudflare_api_token
+   ```
+   Secure the credentials file:
+   ```bash
+   chmod 600 ~/.secrets/certbot/cloudflare.ini
+   ```
+   Request the certificate:
+   ```bash
+   sudo certbot certonly \
+     --dns-cloudflare \
+     --dns-cloudflare-credentials ~/.secrets/certbot/cloudflare.ini \
+     -d setu.yourdomain.com \
+     -d *.setu.yourdomain.com
+   ```
+3. Create an Nginx site configuration (`/etc/nginx/sites-available/setu`):
+   ```nginx
+   server {
+       listen 80;
+       server_name setu.yourdomain.com *.setu.yourdomain.com;
+       return 301 https://$host$request_uri;
+   }
+
+   server {
+       listen 443 ssl;
+       server_name setu.yourdomain.com *.setu.yourdomain.com;
+
+       ssl_certificate /etc/letsencrypt/live/setu.yourdomain.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/setu.yourdomain.com/privkey.pem;
+
+       location / {
+           proxy_pass http://127.0.0.1:18080;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+4. Enable the configuration and restart Nginx:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/setu /etc/nginx/sites-enabled/
+   sudo systemctl restart nginx
+   ```
+
+---
+
+## Deploying to AWS ECS/EKS using Amazon ECR
+
+If you want to deploy Setu to managed container platforms like **AWS ECS (Elastic Container Service)**, **AWS EKS (Kubernetes)**, or **Google Cloud Run**, you can build and push the production images to a container registry like **Amazon ECR**.
+
+### 1. Build and Push Images to Amazon ECR
+You must build separate images for the `api`, `dashboard`, and `gateway` services.
+
+```bash
+# Login to ECR
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com
+
+# 1. Build & Push API
+docker build -t setu-api ./api
+docker tag setu-api:latest <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/setu-api:latest
+docker push <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/setu-api:latest
+
+# 2. Build & Push Dashboard (Pass domains at build-time)
+docker build -t setu-dashboard \
+  --build-arg NEXT_PUBLIC_TUNNEL_DOMAIN=setu.yourdomain.com \
+  --build-arg NEXT_PUBLIC_PUBLIC_DOMAIN=https://setu.yourdomain.com \
+  ./dashboard
+docker tag setu-dashboard:latest <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/setu-dashboard:latest
+docker push <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/setu-dashboard:latest
+
+# 3. Build & Push Gateway
+docker build -t setu-gateway ./gateway
+docker tag setu-gateway:latest <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/setu-gateway:latest
+docker push <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/setu-gateway:latest
+```
+
+### 2. AWS ECS Deployment Considerations
+* **Application Load Balancer (ALB)**: Deploy an ALB in front of your tasks to route requests:
+  * Route `/api/*` requests to the `api` service target group.
+  * Route `/` (default) requests to the `dashboard` service target group.
+  * Configure wildcard routing on the listener so that `*.setu.yourdomain.com` requests are routed to the `gateway` service target group.
+* **ACM Certificates**: Request a wildcard certificate (`*.yourdomain.com` and `yourdomain.com`) in **AWS Certificate Manager (ACM)** and attach it to your ALB's HTTPS listener.
+* **Environment Variables**: Configure environment variables (e.g., `DATABASE_URL`, `JWT_SECRET`, `GATEWAY_API_TOKEN`) in the ECS Task Definitions or inject them securely using AWS Systems Manager Parameter Store or Secrets Manager.
