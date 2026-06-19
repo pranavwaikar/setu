@@ -579,9 +579,10 @@ Deployment steps:
 3. Configure environment variables (`TUNNEL_DOMAIN`, `PUBLIC_DOMAIN`, `GATEWAY_API_TOKEN`, `JWT_SECRET`, etc.).
 4. Assign your public domain (e.g. `https://setu.yourdomain.com`) **only to the `gateway` service** in the Coolify domain configuration. Keep the domain configuration for the `dashboard` and `api` services **empty**.
 5. Configure wildcard DNS.
-6. Deploy stack (rebuild is required if domains change).
-7. Verify TLS.
-8. Create first admin account.
+6. **Configure wildcard Traefik routing** via a Traefik dynamic configuration file on the Coolify server pointing to the static network alias `http://setu-gateway:8080` (as detailed in `docs/usage.md`).
+7. Deploy stack (rebuild is required if domains change).
+8. Verify TLS.
+9. Create first admin account.
 
 ---
 
