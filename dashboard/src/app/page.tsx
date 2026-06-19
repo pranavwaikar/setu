@@ -27,7 +27,7 @@ export default function Home() {
   // Navigation & Session State
   const [authStatus, setAuthStatus] = useState<'loading' | 'unauthenticated' | 'authenticated'>('loading');
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'tunnels' | 'subdomains' | 'api-keys' | 'instructions'>('tunnels');
+  const [activeTab, setActiveTab] = useState<'tunnels' | 'subdomains' | 'api-keys' | 'instructions' | 'profile'>('tunnels');
   
   // Forms & Inputs
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -527,6 +527,17 @@ export default function Home() {
               <Terminal className="h-4 w-4" />
               CLI Instructions
             </button>
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                activeTab === 'profile'
+                  ? 'bg-purple-500/10 text-purple-400 border-l-2 border-purple-500 pl-2.5'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
+              }`}
+            >
+              <UserIcon className="h-4 w-4" />
+              Developer Profile
+            </button>
           </nav>
         </div>
 
@@ -562,6 +573,7 @@ export default function Home() {
             {activeTab === 'subdomains' && 'Manage Subdomains'}
             {activeTab === 'api-keys' && 'API Keys Management'}
             {activeTab === 'instructions' && 'CLI Integration Guide'}
+            {activeTab === 'profile' && 'Developer Profile'}
           </h2>
 
           {/* Quick info */}
@@ -590,7 +602,7 @@ export default function Home() {
           )}
 
           {/* Card Overview stats */}
-          {activeTab !== 'instructions' && (
+          {activeTab !== 'instructions' && activeTab !== 'profile' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="glass rounded-xl p-5 relative overflow-hidden">
                 <div className="absolute top-4 right-4 text-purple-500/20">
@@ -1156,6 +1168,91 @@ export default function Home() {
                        ▼ (Local TCP Forward)
                  127.0.0.1:3000 (Your Local Server)`}
                   </pre>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 5: Profile Details */}
+          {activeTab === 'profile' && (
+            <div className="glass rounded-xl p-8 max-w-2xl mx-auto space-y-6">
+              <div className="flex items-center gap-4 pb-6 border-b border-zinc-900">
+                <div className="h-16 w-16 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/30 text-purple-400 font-extrabold text-2xl">
+                  {user?.firstName ? user.firstName[0].toUpperCase() : user?.email[0].toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    {user?.firstName || user?.lastName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Developer Profile'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{user?.email}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">First Name</span>
+                  <p className="text-sm font-semibold text-zinc-200">{user?.firstName || 'Not provided'}</p>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Last Name</span>
+                  <p className="text-sm font-semibold text-zinc-200">{user?.lastName || 'Not provided'}</p>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Email Address</span>
+                  <p className="text-sm font-semibold text-zinc-200">{user?.email}</p>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Account Plan</span>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-widest bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">
+                      {user?.plan} Plan
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Email Verification</span>
+                  <div className="mt-1">
+                    {user?.isVerified ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 border border-green-500/20">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Verified
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                        <AlertCircle className="h-3 w-3" />
+                        Pending Verification
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Member Since</span>
+                  <p className="text-sm font-semibold text-zinc-200">
+                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-zinc-900">
+                <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">User Identifier</span>
+                <div className="flex gap-2 bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
+                  <span className="font-mono text-xs text-zinc-400 break-all select-all pr-4">{user?.id}</span>
+                  <button
+                    onClick={() => handleCopy(user?.id || '', 'user-id')}
+                    className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
+                  >
+                    {copiedText === 'user-id' ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-green-400" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>

@@ -148,6 +148,49 @@
         <p style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted);">You can now safely close this browser tab and return to your terminal.</p>
     </div>
 
+    <!-- EDIT & REPLAY MODAL -->
+    <div id="edit-replay-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit & Replay Request</h3>
+                <button class="btn-close-modal" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-tx-id">
+                <div class="form-group grid-2">
+                    <div>
+                        <label class="form-label" for="edit-method">Method</label>
+                        <select id="edit-method" class="form-input">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="OPTIONS">OPTIONS</option>
+                            <option value="HEAD">HEAD</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="edit-path">Path</label>
+                        <input type="text" id="edit-path" class="form-input" placeholder="/api/v1/resource">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="edit-headers">Headers (JSON Array per key)</label>
+                    <textarea id="edit-headers" class="form-textarea" placeholder='{"Content-Type": ["application/json"], "X-Custom": ["value"]}' style="height: 90px; font-family: monospace;"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="edit-body">Body Payload</label>
+                    <textarea id="edit-body" class="form-textarea" placeholder="Request body payload..." style="height: 150px; font-family: monospace;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeEditModal()" style="padding: 0.5rem 1rem;">Cancel</button>
+                <button id="btn-send-custom-replay" class="btn-primary" onclick="sendCustomReplay()" style="padding: 0.5rem 1.25rem;">Send Request</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/app.js"></script>
 </body>
 </html>

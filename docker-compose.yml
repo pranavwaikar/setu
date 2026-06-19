@@ -35,6 +35,9 @@ services:
       PORT: 4000
       PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-https://setu.helios-logic.com}
       NODE_ENV: ${NODE_ENV:-development}
+      RESEND_API_KEY: ${RESEND_API_KEY:-re_placeholder_key}
+      ENABLE_EMAIL_VERFICATION: ${ENABLE_EMAIL_VERFICATION:-false}
+      EMAIL_FROM: ${EMAIL_FROM:-onboarding@resend.dev}
     depends_on:
       postgres:
         condition: service_healthy

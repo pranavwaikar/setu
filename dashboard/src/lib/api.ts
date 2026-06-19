@@ -5,6 +5,7 @@ export interface User {
   createdAt: string;
   firstName?: string;
   lastName?: string;
+  isVerified?: boolean;
 }
 
 export interface Subdomain {
@@ -91,6 +92,27 @@ export const api = {
 
   async me(): Promise<User> {
     return apiFetch<User>('auth/me');
+  },
+
+  async verifyEmail(token: string): Promise<{ success: boolean }> {
+    return apiFetch<{ success: boolean }>('auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  async forgotPassword(email: string): Promise<{ success: boolean }> {
+    return apiFetch<{ success: boolean }>('auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async resetPassword(token: string, password?: string): Promise<{ success: boolean }> {
+    return apiFetch<{ success: boolean }>('auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
   },
 
   // Subdomains

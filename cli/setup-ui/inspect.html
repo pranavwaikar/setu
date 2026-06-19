@@ -431,6 +431,11 @@
                 <span class="sidebar-title">Incoming Streams</span>
                 <button class="btn-clear" onclick="clearTransactions()">Clear All</button>
             </div>
+            <div style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-muted);">
+                <select id="subdomain-filter" onchange="filterSubdomainChanged()" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-muted); border-radius: 0.35rem; color: var(--text-primary); font-size: 0.75rem; padding: 0.4rem 0.5rem; outline: none; cursor: pointer;">
+                    <option value="">All Subdomains</option>
+                </select>
+            </div>
             <div id="request-list" class="request-list">
                 <div class="empty-state">Waiting for HTTP transactions...</div>
             </div>
@@ -451,7 +456,10 @@
                         <span id="det-status" class="status-code success">200 OK</span>
                         <span id="det-url" class="details-url">http://myapp.lvh.me</span>
                     </div>
-                    <button class="btn-primary" id="btn-replay" onclick="replayRequest()">Replay Request</button>
+                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0; align-items: center;">
+                        <button class="btn-clear" id="btn-copy-curl" onclick="copyInspectCurl()" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 0.35rem; height: auto;">Copy cURL</button>
+                        <button class="btn-primary" id="btn-replay" onclick="replayRequest()">Replay Request</button>
+                    </div>
                 </div>
 
                 <div class="details-tabs">
@@ -490,6 +498,20 @@
         let transactions = [];
         let selectedTxId = null;
         let ws;
+        let availableSubdomains = new Set();
+
+        async function fetchAvailableSubdomains() {
+            try {
+                const response = await fetch('/inspect/subdomains');
+                if (response.ok) {
+                    const subs = await response.json();
+                    subs.forEach(s => availableSubdomains.add(s));
+                    updateSubdomainFilterOptions();
+                }
+            } catch (err) {
+                console.error("Failed to fetch subdomains:", err);
+            }
+        }
 
         function connectWS() {
             const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -514,28 +536,73 @@
             };
         }
 
+        function updateSubdomainFilterOptions() {
+            const select = document.getElementById('subdomain-filter');
+            if (!select) return;
+            const currentValue = select.value;
+            
+            // Combine subdomains from initial list + transactions
+            const txSubs = transactions.map(tx => tx.subdomain).filter(Boolean);
+            const allSubs = new Set([...availableSubdomains, ...txSubs]);
+            const subdomains = [...allSubs].sort();
+            
+            select.innerHTML = '<option value="">All Subdomains</option>';
+            subdomains.forEach(sub => {
+                const opt = document.createElement('option');
+                opt.value = sub;
+                opt.innerText = sub;
+                select.appendChild(opt);
+            });
+            
+            if (subdomains.includes(currentValue)) {
+                select.value = currentValue;
+            } else {
+                select.value = "";
+            }
+        }
+
+        function filterSubdomainChanged() {
+            renderList();
+            const filterVal = document.getElementById('subdomain-filter').value;
+            const filteredTxs = filterVal ? transactions.filter(t => t.subdomain === filterVal) : transactions;
+            if (filteredTxs.length > 0) {
+                const currentVisible = filteredTxs.some(t => t.id === selectedTxId);
+                if (!currentVisible) {
+                    selectTransaction(filteredTxs[0].id);
+                }
+            } else {
+                showDetails(null);
+            }
+        }
+
         function addTransaction(tx) {
             transactions.unshift(tx);
             if (transactions.length > 100) transactions.pop();
+            updateSubdomainFilterOptions();
             renderList();
         }
 
         function clearTransactions() {
             transactions = [];
             selectedTxId = null;
+            updateSubdomainFilterOptions();
             renderList();
             showDetails(null);
         }
 
         function renderList() {
+            const select = document.getElementById('subdomain-filter');
+            const filterVal = select ? select.value : '';
+            const filteredTxs = filterVal ? transactions.filter(t => t.subdomain === filterVal) : transactions;
+
             const listContainer = document.getElementById('request-list');
-            if (transactions.length === 0) {
-                listContainer.innerHTML = '<div class="empty-state">Waiting for HTTP transactions...</div>';
+            if (filteredTxs.length === 0) {
+                listContainer.innerHTML = '<div class="empty-state">No HTTP transactions matching filter...</div>';
                 return;
             }
 
             listContainer.innerHTML = '';
-            transactions.forEach(tx => {
+            filteredTxs.forEach(tx => {
                 const item = document.createElement('div');
                 item.className = `request-item ${tx.id === selectedTxId ? 'selected' : ''}`;
                 item.onclick = () => selectTransaction(tx.id);
@@ -549,6 +616,7 @@
                         <span class="method-badge ${tx.method}">${tx.method}</span>
                         <span class="status-code ${statusClass}">${tx.resp_status} ${tx.resp_status_text}</span>
                     </div>
+                    ${!filterVal && tx.subdomain ? `<div style="font-size: 0.65rem; color: var(--accent); font-weight: 500; font-family: monospace; margin-bottom: 0.15rem;">${tx.subdomain}</div>` : ''}
                     <div class="request-path" title="${tx.path}">${tx.path}</div>
                     <div class="request-time">${tx.timestamp}</div>
                 `;
@@ -683,7 +751,42 @@
             }
         }
 
-        window.onload = connectWS;
+        function copyInspectCurl() {
+            if (!selectedTxId) return;
+            const tx = transactions.find(t => t.id === selectedTxId);
+            if (!tx) return;
+
+            let curl = `curl -X ${tx.method}`;
+            if (tx.req_headers) {
+                for (const [name, values] of Object.entries(tx.req_headers)) {
+                    values.forEach(val => {
+                        curl += ` -H "${name}: ${val.replace(/"/g, '\\"')}"`;
+                    });
+                }
+            }
+            if (tx.req_body) {
+                const escapedBody = tx.req_body
+                    .replace(/\\/g, '\\\\')
+                    .replace(/"/g, '\\"')
+                    .replace(/\n/g, '\\n');
+                curl += ` -d "${escapedBody}"`;
+            }
+            curl += ` "${tx.url}"`;
+
+            const btn = document.getElementById('btn-copy-curl');
+            navigator.clipboard.writeText(curl).then(() => {
+                const origText = btn.innerText;
+                btn.innerText = '✔ Copied!';
+                setTimeout(() => { btn.innerText = origText; }, 2000);
+            }).catch(err => {
+                showToast("Failed to copy curl to clipboard", true);
+            });
+        }
+
+        window.onload = () => {
+            fetchAvailableSubdomains();
+            connectWS();
+        };
     </script>
 </body>
 </html>

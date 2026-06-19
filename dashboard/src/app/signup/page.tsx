@@ -21,7 +21,7 @@ export default function SignupPage() {
     // Check if already authenticated
     api.me()
       .then(() => router.push('/'))
-      .catch(() => {});
+      .catch(() => { });
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,11 +31,16 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      await api.register(email, password, firstName, lastName);
-      setSuccessMsg('Account created successfully! Redirecting to login...');
-      setTimeout(() => {
-        router.push('/login');
-      }, 1000);
+      const user = await api.register(email, password, firstName, lastName);
+      if (user.isVerified === false) {
+        setSuccessMsg('Account created successfully! Please check your email to verify your account before logging in.');
+        setLoading(false); // keep form showing or clear loading state
+      } else {
+        setSuccessMsg('Account created successfully! Redirecting to login...');
+        setTimeout(() => {
+          router.push('/login');
+        }, 1500);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Registration failed');
       setLoading(false);
@@ -204,3 +209,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+

@@ -367,6 +367,9 @@ These are handled automatically by `docker-compose.yml`, but can be overridden:
 | `INTERNAL_API_URL` | `http://api:4000` | Internal API server URL (for Next.js SSR requests) |
 | `NEXT_PUBLIC_TUNNEL_DOMAIN` | *(Inherits `TUNNEL_DOMAIN`)* | Next.js build-time fallback tunnel domain |
 | `NEXT_PUBLIC_PUBLIC_DOMAIN` | *(Inherits `PUBLIC_DOMAIN`)* | Next.js build-time fallback public URL |
+| `ENABLE_EMAIL_VERFICATION` | `false` | Enable user email verification upon signup and forgot password flows (requires Resend API key) |
+| `RESEND_API_KEY` | `re_placeholder_key` | API Key for Resend email service (required if `ENABLE_EMAIL_VERFICATION=true` or forgot password is used) |
+| `EMAIL_FROM` | `onboarding@resend.dev` | Configurable sender address for outgoing verification/reset emails |
 
 > [!IMPORTANT]
 > **Build-Time Compilation:** Because Next.js compiles the dashboard's domain configuration (`NEXT_PUBLIC_TUNNEL_DOMAIN` and `NEXT_PUBLIC_PUBLIC_DOMAIN`) into the client-side JavaScript bundle during the Docker build process, the `TUNNEL_DOMAIN` and `PUBLIC_DOMAIN` environment variables **must be defined before deploying or building the service in Coolify**.

@@ -27,7 +27,7 @@ export class AuthGuard implements CanActivate {
         where: { keyHash },
         include: {
           user: {
-            select: { id: true, email: true, plan: true, createdAt: true, firstName: true, lastName: true },
+            select: { id: true, email: true, plan: true, createdAt: true, firstName: true, lastName: true, isVerified: true },
           },
         },
       });
@@ -54,7 +54,7 @@ export class AuthGuard implements CanActivate {
 
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
-        select: { id: true, email: true, plan: true, createdAt: true, firstName: true, lastName: true },
+        select: { id: true, email: true, plan: true, createdAt: true, firstName: true, lastName: true, isVerified: true },
       });
 
       if (!user) {

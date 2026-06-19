@@ -487,7 +487,33 @@ func openBrowser(url string) {
 	}
 }
 
+type TunnelState struct {
+	Active bool   `json:"active"`
+	Port   string `json:"port"`
+}
+
+type ActiveTunnel struct {
+	CancelFunc context.CancelFunc
+	Subdomain  string
+	Port       string
+}
+
+var (
+	activeTunnelsMu sync.Mutex
+	activeTunnels   = make(map[string]*ActiveTunnel)
+)
+
 func runSetupServer(cfg *Config) {
+	// Stop all active tunnels on shutdown
+	defer func() {
+		activeTunnelsMu.Lock()
+		defer activeTunnelsMu.Unlock()
+		for _, t := range activeTunnels {
+			t.CancelFunc()
+		}
+		activeTunnels = make(map[string]*ActiveTunnel)
+	}()
+
 	// 1. Find a free port dynamically
 	port := 4040
 	var listener net.Listener
@@ -757,6 +783,108 @@ func runSetupServer(cfg *Config) {
 		io.Copy(w, resp.Body)
 	})
 
+	// GET /api/tunnels/status
+	mux.HandleFunc("/api/tunnels/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		activeTunnelsMu.Lock()
+		defer activeTunnelsMu.Unlock()
+
+		statusMap := make(map[string]TunnelState)
+		for sub, t := range activeTunnels {
+			statusMap[sub] = TunnelState{
+				Active: true,
+				Port:   t.Port,
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"tunnels": statusMap,
+		})
+	})
+
+	// POST /api/tunnels/start
+	mux.HandleFunc("/api/tunnels/start", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Subdomain string `json:"subdomain"`
+			Port      string `json:"port"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if req.Subdomain == "" || req.Port == "" {
+			http.Error(w, "Missing subdomain or port", http.StatusBadRequest)
+			return
+		}
+
+		c, err := loadConfig()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		activeTunnelsMu.Lock()
+		defer activeTunnelsMu.Unlock()
+
+		// Stop existing if any
+		if t, ok := activeTunnels[req.Subdomain]; ok {
+			t.CancelFunc()
+			delete(activeTunnels, req.Subdomain)
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		activeTunnels[req.Subdomain] = &ActiveTunnel{
+			CancelFunc: cancel,
+			Subdomain:  req.Subdomain,
+			Port:       req.Port,
+		}
+
+		go runTunnelLoop(ctx, c.Gateway, req.Subdomain, req.Port, c.ApiKey, hostHeaderFlag, insecureSkipVerifyFlag, authFlag, "http")
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	})
+
+	// POST /api/tunnels/stop
+	mux.HandleFunc("/api/tunnels/stop", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Subdomain string `json:"subdomain"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		activeTunnelsMu.Lock()
+		defer activeTunnelsMu.Unlock()
+
+		if t, ok := activeTunnels[req.Subdomain]; ok {
+			t.CancelFunc()
+			delete(activeTunnels, req.Subdomain)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	})
+
+	// Share inspect ws and replay endpoints in setup-panel as well
+	mux.HandleFunc("/inspect/ws", handleInspectWS)
+	mux.HandleFunc("/inspect/replay", handleInspectReplay)
+	mux.HandleFunc("/inspect/subdomains", handleInspectSubdomains)
+
 	var server *http.Server
 
 	// POST /api/exit
@@ -897,7 +1025,7 @@ func dialLocal(scheme, targetHostPort string, insecureSkipVerify bool, hostHeade
 	return dialer.Dial("tcp", targetHostPort)
 }
 
-func handleProxyStream(stream net.Conn, localPort string, publicDomain string, hostHeader string, insecureSkipVerify bool, tunnelType string) {
+func handleProxyStream(stream net.Conn, localPort string, publicDomain string, hostHeader string, insecureSkipVerify bool, tunnelType string, subdomain string) {
 	defer stream.Close()
 
 	scheme, targetHostPort := parseTarget(localPort)
@@ -1011,6 +1139,7 @@ func handleProxyStream(stream net.Conn, localPort string, publicDomain string, h
 		RespStatusText: strings.TrimPrefix(resp.Status, fmt.Sprintf("%d ", resp.StatusCode)),
 		RespHeaders:    resp.Header,
 		RespBody:       string(respBodyBytes),
+		Subdomain:      subdomain,
 	}
 	addTransaction(tx)
 
@@ -1194,7 +1323,7 @@ func runTunnelLoop(ctx context.Context, gateway, subdomain, localPort, apiKey st
 					if err != nil {
 						break
 					}
-					go handleProxyStream(stream, localPort, publicDomain, hostHeader, insecureSkipVerify, tunnelType)
+					go handleProxyStream(stream, localPort, publicDomain, hostHeader, insecureSkipVerify, tunnelType, subdomain)
 				}
 			}
 
@@ -1257,6 +1386,7 @@ type HTTPTransaction struct {
 	RespStatusText string              `json:"resp_status_text"`
 	RespHeaders    map[string][]string `json:"resp_headers"`
 	RespBody       string              `json:"resp_body"`
+	Subdomain      string              `json:"subdomain"`
 }
 
 var (
@@ -1324,20 +1454,82 @@ func runInspectServer(port int) {
 		io.Copy(w, data)
 	})
 
-	mux.HandleFunc("/inspect/replay", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/inspect/replay", handleInspectReplay)
+	mux.HandleFunc("/inspect/ws", handleInspectWS)
+	mux.HandleFunc("/inspect/subdomains", handleInspectSubdomains)
 
-		id := r.URL.Query().Get("id")
-		if id == "" {
-			http.Error(w, "Missing id parameter", http.StatusBadRequest)
-			return
-		}
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	log.Printf("[Inspect Dashboard] Running at http://%s/inspect", addr)
+	server := &http.Server{Addr: addr, Handler: mux}
+	_ = server.ListenAndServe()
+}
 
+func handleInspectWS(w http.ResponseWriter, r *http.Request) {
+	conn, err := wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("[Inspect WS Upgrade Error] %v", err)
+		return
+	}
+
+	clientsMu.Lock()
+	inspectClients[conn] = true
+	clientsMu.Unlock()
+
+	txMu.RLock()
+	for i := len(transactions) - 1; i >= 0; i-- {
+		_ = conn.WriteJSON(transactions[i])
+	}
+	txMu.RUnlock()
+
+	defer func() {
+		clientsMu.Lock()
+		delete(inspectClients, conn)
+		clientsMu.Unlock()
+		conn.Close()
+	}()
+
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			break
+		}
+	}
+}
+
+func handleInspectReplay(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var targetMethod, targetPath, targetBody, targetLocalTarget string
+	var targetHeaders map[string][]string
+	var originalURL string
+
+	// Check if JSON body is provided (for custom payload replay)
+	var reqPayload struct {
+		ID          string              `json:"id"`
+		Method      string              `json:"method"`
+		Path        string              `json:"path"`
+		ReqHeaders  map[string][]string `json:"req_headers"`
+		ReqBody     string              `json:"req_body"`
+		LocalTarget string              `json:"local_target"`
+	}
+
+	isCustom := false
+	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		if err := json.NewDecoder(r.Body).Decode(&reqPayload); err == nil {
+			isCustom = true
+		}
+	}
+
+	var foundTx *HTTPTransaction
+	id := r.URL.Query().Get("id")
+	if id == "" && isCustom {
+		id = reqPayload.ID
+	}
+
+	if id != "" {
 		txMu.RLock()
-		var foundTx *HTTPTransaction
 		for _, tx := range transactions {
 			if tx.ID == id {
 				foundTx = &tx
@@ -1345,112 +1537,126 @@ func runInspectServer(port int) {
 			}
 		}
 		txMu.RUnlock()
+	}
 
+	if isCustom {
+		targetMethod = reqPayload.Method
+		targetPath = reqPayload.Path
+		targetHeaders = reqPayload.ReqHeaders
+		targetBody = reqPayload.ReqBody
+		if reqPayload.LocalTarget != "" {
+			targetLocalTarget = reqPayload.LocalTarget
+		} else if foundTx != nil {
+			targetLocalTarget = foundTx.LocalTarget
+		}
+		if foundTx != nil {
+			originalURL = foundTx.URL
+		}
+	} else {
 		if foundTx == nil {
 			http.Error(w, "Transaction not found", http.StatusNotFound)
 			return
 		}
+		targetMethod = foundTx.Method
+		targetPath = foundTx.Path
+		targetHeaders = foundTx.ReqHeaders
+		targetBody = foundTx.ReqBody
+		targetLocalTarget = foundTx.LocalTarget
+		originalURL = foundTx.URL
+	}
 
-		// Replay the request directly to the local target
-		client := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: insecureSkipVerifyFlag,
-				},
+	if targetLocalTarget == "" {
+		http.Error(w, "Local target not resolved", http.StatusBadRequest)
+		return
+	}
+
+	// Replay the request directly to the local target
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: insecureSkipVerifyFlag,
 			},
-			Timeout: 10 * time.Second,
-		}
+		},
+		Timeout: 10 * time.Second,
+	}
 
-		targetURL := foundTx.LocalTarget + foundTx.Path
-		req, err := http.NewRequest(foundTx.Method, targetURL, strings.NewReader(foundTx.ReqBody))
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success": false,
-				"error":   "Failed to create request: " + err.Error(),
-			})
-			return
-		}
-
-		// Copy original headers
-		for name, values := range foundTx.ReqHeaders {
-			for _, value := range values {
-				req.Header.Add(name, value)
-			}
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadGateway)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success": false,
-				"error":   "Failed to connect to local target: " + err.Error(),
-			})
-			return
-		}
-		defer resp.Body.Close()
-
-		respBodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
-
-		// Record the replayed response in log list
-		replayedTx := HTTPTransaction{
-			ID:             fmt.Sprintf("%d", time.Now().UnixNano()),
-			Timestamp:      time.Now().Format("15:04:05.000"),
-			Method:         foundTx.Method,
-			URL:            foundTx.URL,
-			Path:           foundTx.Path,
-			LocalTarget:    foundTx.LocalTarget,
-			ReqHeaders:     foundTx.ReqHeaders,
-			ReqBody:        foundTx.ReqBody,
-			RespStatus:     resp.StatusCode,
-			RespStatusText: strings.TrimPrefix(resp.Status, fmt.Sprintf("%d ", resp.StatusCode)),
-			RespHeaders:    resp.Header,
-			RespBody:       string(respBodyBytes),
-		}
-		addTransaction(replayedTx)
-
+	targetURL := targetLocalTarget + targetPath
+	req, err := http.NewRequest(targetMethod, targetURL, strings.NewReader(targetBody))
+	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"id":      replayedTx.ID,
+			"success": false,
+			"error":   "Failed to create request: " + err.Error(),
 		})
+		return
+	}
+
+	// Copy headers
+	for name, values := range targetHeaders {
+		for _, value := range values {
+			req.Header.Add(name, value)
+		}
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Failed to connect to local target: " + err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	respBodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+
+	// Record the replayed response in log list
+	if originalURL == "" {
+		originalURL = targetURL
+	}
+	var sub string
+	if foundTx != nil {
+		sub = foundTx.Subdomain
+	}
+	replayedTx := HTTPTransaction{
+		ID:             fmt.Sprintf("%d", time.Now().UnixNano()),
+		Timestamp:      time.Now().Format("15:04:05.000"),
+		Method:         targetMethod,
+		URL:            originalURL,
+		Path:           targetPath,
+		LocalTarget:    targetLocalTarget,
+		ReqHeaders:     targetHeaders,
+		ReqBody:        targetBody,
+		RespStatus:     resp.StatusCode,
+		RespStatusText: strings.TrimPrefix(resp.Status, fmt.Sprintf("%d ", resp.StatusCode)),
+		RespHeaders:    resp.Header,
+		RespBody:       string(respBodyBytes),
+		Subdomain:      sub,
+	}
+	addTransaction(replayedTx)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"id":      replayedTx.ID,
 	})
+}
 
-	mux.HandleFunc("/inspect/ws", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := wsUpgrader.Upgrade(w, r, nil)
-		if err != nil {
-			log.Printf("[Inspect WS Upgrade Error] %v", err)
-			return
+func handleInspectSubdomains(w http.ResponseWriter, r *http.Request) {
+	c, err := loadConfig()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	var subs []string
+	for _, m := range c.PortMappings {
+		if m.Subdomain != "" {
+			subs = append(subs, m.Subdomain)
 		}
-
-		clientsMu.Lock()
-		inspectClients[conn] = true
-		clientsMu.Unlock()
-
-		txMu.RLock()
-		for i := len(transactions) - 1; i >= 0; i-- {
-			_ = conn.WriteJSON(transactions[i])
-		}
-		txMu.RUnlock()
-
-		defer func() {
-			clientsMu.Lock()
-			delete(inspectClients, conn)
-			clientsMu.Unlock()
-			conn.Close()
-		}()
-
-		for {
-			if _, _, err := conn.ReadMessage(); err != nil {
-				break
-			}
-		}
-	})
-
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	log.Printf("[Inspect Dashboard] Running at http://%s/inspect", addr)
-	server := &http.Server{Addr: addr, Handler: mux}
-	_ = server.ListenAndServe()
+	}
+	json.NewEncoder(w).Encode(subs)
 }
