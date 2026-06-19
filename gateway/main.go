@@ -180,8 +180,9 @@ var reservedSubdomains = map[string]bool{
 	"helios":    true,
 	"setu":      true,
 	"auth":      true,
-	"status":    true,
-	"docs":      true,
+	"status":      true,
+	"docs":        true,
+	"admin-panel": true,
 }
 
 func isReservedSubdomain(subdomain string) bool {
@@ -255,6 +256,9 @@ func main() {
 	})
 	// 3. API service — strip /api prefix before forwarding to NestJS
 	mux.Handle("/api/", gw.apiProxy())
+	// 3b. Admin panel — route to NestJS API directly
+	mux.Handle("/admin-panel", gw.adminPanelProxy())
+	mux.Handle("/admin-panel/", gw.adminPanelProxy())
 	// 4. Everything else → Next.js dashboard (catches / and all dashboard routes)
 	mux.Handle("/", gw.dashboardProxy())
 
@@ -491,6 +495,27 @@ func (g *Gateway) dashboardProxy() http.Handler {
 		log.Printf("[Dashboard Proxy Error] %s %s: %v", r.Method, r.URL.Path, err)
 		w.WriteHeader(http.StatusBadGateway)
 		fmt.Fprintf(w, "Dashboard unavailable: %v", err)
+	}
+	return proxy
+}
+
+// adminPanelProxy returns an http.Handler that reverse-proxies requests
+// to the internal NestJS API service without stripping path prefixes.
+func (g *Gateway) adminPanelProxy() http.Handler {
+	target := mustParseURL(g.apiServerURL)
+	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Header.Set("X-Forwarded-Proto", "https")
+		req.Header.Del("X-Gateway-Secret")
+	}
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("[Admin Panel Proxy Error] %s %s: %v", r.Method, r.URL.Path, err)
+		w.WriteHeader(http.StatusBadGateway)
+		fmt.Fprintf(w, `{"error":"admin panel unavailable","detail":%q}`, err.Error())
 	}
 	return proxy
 }

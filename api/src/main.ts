@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 
 // Prevent silent crashes from unhandled rejections / exceptions
 process.on('unhandledRejection', (reason) => {
@@ -44,6 +45,13 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+  app.use(
+    session({
+      secret: process.env.ADMIN_COOKIE_PASSWORD || 'sessionsecretcookiekey1234567890',
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
 
   const port = process.env.PORT ?? 4000;
   // Bind to 0.0.0.0 so Docker networking and healthchecks can reach the server

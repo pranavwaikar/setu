@@ -370,6 +370,9 @@ These are handled automatically by `docker-compose.yml`, but can be overridden:
 | `ENABLE_EMAIL_VERFICATION` | `false` | Enable user email verification upon signup and forgot password flows (requires Resend API key) |
 | `RESEND_API_KEY` | `re_placeholder_key` | API Key for Resend email service (required if `ENABLE_EMAIL_VERFICATION=true` or forgot password is used) |
 | `EMAIL_FROM` | `onboarding@resend.dev` | Configurable sender address for outgoing verification/reset emails |
+| `ADMIN_EMAIL` | `admin@setu.com` | Access email for the AdminJS admin panel |
+| `ADMIN_PASSWORD` | `adminpassword123` | Access password for the AdminJS admin panel |
+| `ADMIN_COOKIE_PASSWORD` | `sessionsecretcookiekey1234567890` | Encryption secret key used for session cookies (must be at least 32 characters) |
 
 > [!IMPORTANT]
 > **Build-Time Compilation:** Because Next.js compiles the dashboard's domain configuration (`NEXT_PUBLIC_TUNNEL_DOMAIN` and `NEXT_PUBLIC_PUBLIC_DOMAIN`) into the client-side JavaScript bundle during the Docker build process, the `TUNNEL_DOMAIN` and `PUBLIC_DOMAIN` environment variables **must be defined before deploying or building the service in Coolify**.
@@ -450,7 +453,22 @@ Wildcard certificates (`*.setu.yourdomain.com`) require **DNS-01 challenge** —
 
 ---
 
+## Admin Panel (AdminJS)
 
+Setu features a built-in admin dashboard using [AdminJS](https://github.com/SoftwareBrothers/adminjs) to manage database models directly.
+
+### Accessing the Panel
+The admin panel is securely reverse-proxied by the gateway and is accessible at:
+`https://<your-public-domain>/admin-panel` (or `http://localhost:3000/admin-panel` when running locally).
+
+### Configuration
+Access to the admin panel is protected by Basic Authentication. You can customize the credentials using the following environment variables:
+
+- `ADMIN_EMAIL`: The admin user login email address (defaults to `admin@setu.com`).
+- `ADMIN_PASSWORD`: The admin user login password (defaults to `adminpassword123`).
+- `ADMIN_COOKIE_PASSWORD`: Secret encryption key used to sign session cookies (defaults to `sessionsecretcookiekey1234567890`, must be at least 32 characters long).
+
+---
 
 ## Building from Source
 

@@ -38,6 +38,9 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-re_placeholder_key}
       ENABLE_EMAIL_VERFICATION: ${ENABLE_EMAIL_VERFICATION:-false}
       EMAIL_FROM: ${EMAIL_FROM:-onboarding@resend.dev}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@setu.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-adminpassword123}
+      ADMIN_COOKIE_PASSWORD: ${ADMIN_COOKIE_PASSWORD:-sessionsecretcookiekey1234567890}
     depends_on:
       postgres:
         condition: service_healthy
