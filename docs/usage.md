@@ -136,13 +136,46 @@ We have made it easy to configure your custom domain using environment variables
      ```bash
      docker compose up --build -d
      ```
-   * **If using Coolify**: Point Coolify to this repository, select `docker-compose.yml`, and configure the service domains:
-     * **`gateway`**: Configure the public domain/URL (e.g., `https://setu.yourdomain.com`).
-     * **`dashboard`**: **Keep the domain field empty**.
-     * **`api`**: **Keep the domain field empty**.
-     
-     > [!IMPORTANT]
-     > The gateway acts as the public entrypoint and handles proxying `/` requests to the dashboard and `/api/*` requests to the api service. Do not assign public domains to the dashboard or api services in Coolify.
+    * **If using Coolify**: Point Coolify to this repository, select `docker-compose.yml`, and configure the service domains:
+      * **`gateway`**: Configure the public domain/URL (e.g., `https://setu.yourdomain.com`).
+      * **`dashboard`**: **Keep the domain field empty**.
+      * **`api`**: **Keep the domain field empty**.
+      
+      > [!IMPORTANT]
+      > The gateway acts as the public entrypoint and handles proxying `/` requests to the dashboard and `/api/*` requests to the api service. Do not assign public domains to the dashboard or api services in Coolify.
+      > 
+      > **Wildcard Routing Setup (Coolify Traefik Dynamic Config)**:
+      > Because Coolify's compose parser does not interpolate environment variables in `labels`, you must configure wildcard subdomain routing directly in Coolify's Traefik Proxy configuration editor:
+      > 1. Go to **Servers** -> **[Your Server]** -> **Proxy** tab.
+      > 2. Open the **Configuration** editor (YAML format).
+      > 3. Under the `http:` section, add the following configuration (replace `setu.yourdomain.com` with your actual domain):
+      >    ```yaml
+      >    http:
+      >      routers:
+      >        setu-tunnel-https:
+      >          rule: "HostRegexp(`^[a-z0-9-]+[.]setu.yourdomain.com$`)"
+      >          entryPoints:
+      >            - https
+      >          service: setu-tunnel-svc
+      >          tls:
+      >            certResolver: letsencrypt-dns
+      >            domains:
+      >              - main: setu.yourdomain.com
+      >                sans:
+      >                  - "*.setu.yourdomain.com"
+      >        setu-tunnel-http:
+      >          rule: "HostRegexp(`^[a-z0-9-]+[.]setu.yourdomain.com$`)"
+      >          entryPoints:
+      >            - http
+      >          middlewares:
+      >            - redirect-to-https
+      >          service: setu-tunnel-svc
+      >      services:
+      >        setu-tunnel-svc:
+      >          loadBalancer:
+      >            servers:
+      >              - url: "http://setu_gateway:8080"
+      >    ```
 
 3. **Configure DNS records**:
    Configure your DNS provider to add two A records pointing to your server's IP address:
