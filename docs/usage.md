@@ -144,38 +144,13 @@ We have made it easy to configure your custom domain using environment variables
       > [!IMPORTANT]
       > The gateway acts as the public entrypoint and handles proxying `/` requests to the dashboard and `/api/*` requests to the api service. Do not assign public domains to the dashboard or api services in Coolify.
       > 
-      > **Wildcard Routing Setup (Coolify Traefik Dynamic Config)**:
-      > Because Coolify's compose parser does not interpolate environment variables in `labels`, you must configure wildcard subdomain routing directly in Coolify's Traefik Proxy configuration editor:
-      > 1. Go to **Servers** -> **[Your Server]** -> **Proxy** tab.
-      > 2. Open the **Configuration** editor (YAML format).
-      > 3. Under the `http:` section, add the following configuration (replace `setu.yourdomain.com` with your actual domain):
-      >    ```yaml
-      >    http:
-      >      routers:
-      >        setu-tunnel-https:
-      >          rule: "HostRegexp(`^[a-z0-9-]+[.]setu.yourdomain.com$`)"
-      >          entryPoints:
-      >            - https
-      >          service: setu-tunnel-svc
-      >          tls:
-      >            certResolver: letsencrypt-dns
-      >            domains:
-      >              - main: setu.yourdomain.com
-      >                sans:
-      >                  - "*.setu.yourdomain.com"
-      >        setu-tunnel-http:
-      >          rule: "HostRegexp(`^[a-z0-9-]+[.]setu.yourdomain.com$`)"
-      >          entryPoints:
-      >            - http
-      >          middlewares:
-      >            - redirect-to-https
-      >          service: setu-tunnel-svc
-      >      services:
-      >        setu-tunnel-svc:
-      >          loadBalancer:
-      >            servers:
-      >              - url: "http://setu_gateway:8080"
-      >    ```
+      > **Important Coolify Setup Step**:
+      > Since Traefik wildcard routing is driven by environment variables inside the compose file labels, you **must** add the following environment variables in the Coolify UI application settings under **Environment Variables** (this ensures Coolify's compose parser successfully compiles the Traefik labels at deploy time):
+      > * **`TUNNEL_DOMAIN`**: `setu.yourdomain.com` (e.g. `setu.helios-logic.com`)
+      > * **`PUBLIC_DOMAIN`**: `https://setu.yourdomain.com` (e.g. `https://setu.helios-logic.com`)
+      > * **`GATEWAY_API_TOKEN`**: your secret token (matches the CLI client's configuration)
+      > * **`JWT_SECRET`**: your JWT secret key
+      > * **`NODE_ENV`**: `production`
 
 3. **Configure DNS records**:
    Configure your DNS provider to add two A records pointing to your server's IP address:
