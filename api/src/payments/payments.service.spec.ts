@@ -48,10 +48,12 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
     user: {
       findUnique: jest.fn().mockResolvedValue(mockUser),
       update: jest.fn().mockResolvedValue({ ...mockUser, plan: 'PRO' }),
+      findFirst: jest.fn().mockResolvedValue(mockUser),
     },
     paymentLog: {
       create: jest.fn().mockResolvedValue({ id: 'log-123' }),
       findUnique: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
     },
   };
 
@@ -87,7 +89,11 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
       expect(result.success).toBe(true);
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: 'user-123' },
-        data: { plan: 'PRO' },
+        data: {
+          plan: 'PRO',
+          subscriptionId: null,
+          subscriptionStatus: 'active',
+        },
       });
       expect(mockPrismaService.paymentLog.create).toHaveBeenCalled();
       expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
@@ -103,6 +109,50 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
 
       expect(result.success).toBe(true);
       expect(mockSend).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('downgradeUserPlan', () => {
+    it('should downgrade the user plan to FREE and log it in the audit log', async () => {
+      const result = await service.downgradeUserPlan('user-123', 'failed', 'tx_failed_123', 'Insolvent account');
+
+      expect(result.success).toBe(true);
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: {
+          plan: 'FREE',
+          subscriptionStatus: 'failed',
+        },
+      });
+      expect(mockPrismaService.paymentLog.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'user-123',
+          transactionId: 'tx_failed_123',
+          status: 'FAILED',
+          plan: 'FREE',
+          errorMessage: 'Insolvent account',
+        })
+      }));
+    });
+  });
+
+  describe('cancelSubscription', () => {
+    it('should simulate cancellation when API key is a placeholder', async () => {
+      process.env.DODO_API_KEY = 'dp_test_placeholder_key';
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValueOnce({
+        ...mockUser,
+        subscriptionId: 'sub_active_123',
+      });
+      const result = await service.cancelSubscription('user-123');
+      expect(result.success).toBe(true);
+      expect(result.isMock).toBe(true);
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'user-123' },
+        data: expect.objectContaining({
+          plan: 'FREE',
+          subscriptionStatus: 'cancelled',
+        }),
+      }));
     });
   });
 
@@ -220,6 +270,32 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
       ).rejects.toThrow(BadRequestException);
 
       expect(mockPrismaService.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should process subscription.cancelled webhook and downgrade user to FREE', async () => {
+      delete process.env.DODO_WEBHOOK_SECRET;
+
+      const payload = {
+        type: 'subscription.cancelled',
+        data: {
+          subscription_id: 'sub_dodo_123',
+          customer: {
+            email: 'test@example.com',
+          },
+          cancellation_comment: 'User cancelled',
+        },
+      };
+
+      const result = await service.handleWebhook(payload, JSON.stringify(payload), {});
+
+      expect(result).toEqual({ received: true });
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'user-123' },
+        data: expect.objectContaining({
+          plan: 'FREE',
+          subscriptionStatus: 'cancelled',
+        }),
+      }));
     });
   });
 });

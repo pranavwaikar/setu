@@ -68,6 +68,7 @@ export class PaymentsService {
     transactionId: string = 'mock_tx_' + Math.random().toString(36).substring(7),
     amount: number = plan === 'ENTERPRISE' ? 25000 : 500,
     currency: string = 'USD',
+    subscriptionId?: string,
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -87,11 +88,13 @@ export class PaymentsService {
       return { success: true, logId: existingLog.id };
     }
 
-    // 1. Update user plan
+    // 1. Update user plan and subscription state
     await this.prisma.user.update({
       where: { id: userId },
       data: {
         plan: plan as Plan,
+        subscriptionId: subscriptionId || (transactionId.startsWith('sub_') ? transactionId : null),
+        subscriptionStatus: 'active',
       },
     });
 
@@ -109,8 +112,110 @@ export class PaymentsService {
 
     // 3. Send receipt & upgrade email
     await this.sendPurchaseReceiptEmail(user.email, user.firstName || 'Developer', plan, transactionId, amount, currency);
-
     return { success: true, logId: paymentLog.id };
+  }
+
+  async downgradeUserPlan(
+    userId: string,
+    status: 'failed' | 'cancelled' | 'expired',
+    transactionId: string,
+    reason: string = 'Subscription downgraded',
+    amount: number = 0,
+    currency: string = 'USD',
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // 1. Update user plan and subscription state (downgrade to FREE, preserve all other data)
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        plan: 'FREE',
+        subscriptionStatus: status,
+      },
+    });
+
+    // 2. Log downgrade event in PaymentLog (audit log)
+    const logStatus = status.toUpperCase(); // 'FAILED', 'CANCELLED', 'EXPIRED'
+    const paymentLog = await (this.prisma as any).paymentLog.create({
+      data: {
+        userId,
+        transactionId,
+        amount,
+        currency,
+        status: logStatus,
+        plan: 'FREE',
+        errorMessage: reason,
+      },
+    });
+
+    console.log(`[Downgrade Success] User ${userId} plan set to FREE, subscription status set to ${status}. logged in audit log.`);
+    return { success: true, logId: paymentLog.id };
+  }
+
+  async getPaymentHistory(userId: string) {
+    return this.prisma.paymentLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async cancelSubscription(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (!user.subscriptionId) {
+      throw new BadRequestException('No active subscription found');
+    }
+
+    const dodoApiKey = process.env.DODO_API_KEY;
+    if (!dodoApiKey || dodoApiKey === 'dp_test_placeholder_key' || dodoApiKey.includes('placeholder')) {
+      console.log(`[Mock Cancel] Simulating subscription cancellation for user ${userId}`);
+      await this.downgradeUserPlan(
+        userId,
+        'cancelled',
+        'mock_cancel_' + Math.random().toString(36).substring(7),
+        'Cancelled by user (mock simulation)'
+      );
+      return { success: true, isMock: true };
+    }
+
+    const isTestMode = process.env.DODO_TEST_MODE !== 'false';
+    const client = new DodoPayments({
+      bearerToken: dodoApiKey,
+      environment: isTestMode ? 'test_mode' : 'live_mode',
+    });
+
+    try {
+      // Call Dodo Payments API to cancel the subscription
+      const subscription = await client.subscriptions.update(user.subscriptionId, {
+        status: 'cancelled',
+        cancel_reason: 'cancelled_by_customer',
+      });
+
+      // Update local subscriptionStatus immediately so the UI reflects the cancellation
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionStatus: 'cancelled',
+        },
+      });
+
+      return { success: true, status: subscription.status };
+    } catch (err: any) {
+      console.error('Failed to cancel subscription via Dodo Payments API:', err);
+      throw new BadRequestException(`Failed to cancel subscription: ${err.message || err}`);
+    }
   }
 
   // Handle Dodo webhooks for live/real transactions
@@ -157,6 +262,8 @@ export class PaymentsService {
           where: { id: userId },
           data: {
             plan: plan as Plan,
+            subscriptionId: data.subscription_id || null,
+            subscriptionStatus: 'active',
           },
         });
       } else {
@@ -172,9 +279,39 @@ export class PaymentsService {
 
       if (userId) {
         console.log(`[Webhook Success] Processing payment transaction: upgrading user ${userId} to ${plan} (Tx/Sub: ${transactionId})`);
-        await this.upgradeUserPlan(userId, plan, transactionId, amount, currency);
+        await this.upgradeUserPlan(userId, plan, transactionId, amount, currency, data.subscription_id);
       } else {
         console.warn(`[Webhook Warning] Missing userId in metadata:`, data.metadata);
+      }
+    } else if ((eventType === 'subscription.cancelled' || eventType === 'subscription.expired' || eventType === 'subscription.failed' || eventType === 'payment.failed') && body.data) {
+      const data = body.data;
+      const email = data.customer?.email;
+      const subscriptionId = data.subscription_id;
+
+      // Find user by subscriptionId or email
+      const user = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            subscriptionId ? { subscriptionId } : null,
+            email ? { email } : null,
+          ].filter(Boolean) as any,
+        },
+      });
+
+      if (user) {
+        const status = eventType === 'payment.failed' ? 'failed' : 
+                       eventType === 'subscription.failed' ? 'failed' :
+                       eventType === 'subscription.cancelled' ? 'cancelled' : 'expired';
+
+        const transactionId = data.payment_id || data.subscription_id || data.id || 'failed_tx_' + Math.random().toString(36).substring(7);
+        const reason = data.error_message || data.error_code || data.cancellation_comment || `Subscription ${status}`;
+        const amount = data.total_amount || data.amount || 0;
+        const currency = data.currency || 'USD';
+
+        console.log(`[Webhook Failure/Downgrade] Event: ${eventType}. Downgrading user ${user.id} to FREE. Reason: ${reason}`);
+        await this.downgradeUserPlan(user.id, status, transactionId, reason, amount, currency);
+      } else {
+        console.warn(`[Webhook Warning] No user found for downgrade. Email: ${email}, SubId: ${subscriptionId}`);
       }
     } else {
       console.log(`[Webhook Ignored] Event type ${eventType} is not processed`);

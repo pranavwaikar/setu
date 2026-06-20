@@ -49,6 +49,8 @@ export class AuthService {
         firstName: true,
         lastName: true,
         isVerified: true,
+        subscriptionId: true,
+        subscriptionStatus: true,
       },
     });
 
@@ -102,6 +104,8 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         isVerified: user.isVerified,
+        subscriptionId: user.subscriptionId,
+        subscriptionStatus: user.subscriptionStatus,
       },
       token,
     };

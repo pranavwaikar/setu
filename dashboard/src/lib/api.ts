@@ -6,6 +6,8 @@ export interface User {
   firstName?: string;
   lastName?: string;
   isVerified?: boolean;
+  subscriptionId?: string | null;
+  subscriptionStatus?: string | null;
 }
 
 export interface Subdomain {
@@ -166,6 +168,16 @@ export const api = {
     return apiFetch<{ success: boolean }>('payments/mock-success', {
       method: 'POST',
       body: JSON.stringify({ plan }),
+    });
+  },
+
+  async getPaymentHistory(): Promise<any[]> {
+    return apiFetch<any[]>('payments/history');
+  },
+
+  async cancelSubscription(): Promise<{ success: boolean }> {
+    return apiFetch<{ success: boolean }>('payments/cancel', {
+      method: 'POST',
     });
   },
 };

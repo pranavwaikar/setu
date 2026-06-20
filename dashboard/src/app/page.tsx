@@ -47,6 +47,7 @@ export default function Home() {
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   
   // UI UX States
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -126,6 +127,23 @@ export default function Home() {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    if (!window.confirm('Are you sure you want to cancel your subscription? Your plan will be downgraded to Free immediately.')) {
+      return;
+    }
+    setLoadingAction('cancel');
+    setErrorMsg(null);
+    try {
+      await api.cancelSubscription();
+      showSuccess('Subscription cancelled and plan downgraded to Free.');
+      await checkAuth();
+    } catch (err: any) {
+      showError(err.message || 'Failed to cancel subscription');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   // Poll active tunnels periodically if authenticated
   useEffect(() => {
     if (authStatus === 'authenticated') {
@@ -148,14 +166,16 @@ export default function Home() {
 
   const fetchData = async () => {
     try {
-      const [t, s, k] = await Promise.all([
+      const [t, s, k, h] = await Promise.all([
         api.listTunnels(),
         api.listSubdomains(),
-        api.listApiKeys()
+        api.listApiKeys(),
+        api.getPaymentHistory()
       ]);
       setTunnels(t);
       setSubdomains(s);
       setApiKeys(k);
+      setPaymentHistory(h);
     } catch (err: any) {
       showError(err.message || 'Failed to fetch data');
     }
@@ -1556,6 +1576,19 @@ export default function Home() {
                       )}
                     </button>
                   )}
+                  {user?.plan !== 'FREE' && user?.subscriptionStatus === 'active' && (
+                    <button
+                      onClick={handleCancelSubscription}
+                      disabled={loadingAction === 'cancel'}
+                      className="mt-4 w-full py-2.5 rounded-lg bg-red-950/20 hover:bg-red-900/30 border border-red-500/20 text-red-400 disabled:bg-zinc-800 disabled:text-zinc-600 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      {loadingAction === 'cancel' ? (
+                        <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                      ) : (
+                        'Cancel Subscription'
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1636,6 +1669,84 @@ export default function Home() {
                   </div>
                 </div>
               )}
+
+              {/* Payment History Section */}
+              <div className="pt-6 border-t border-zinc-900 space-y-4 animate-fadeIn">
+                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Payment & Subscription History</h4>
+                
+                {paymentHistory.length === 0 ? (
+                  <div className="text-center py-8 rounded-xl border border-zinc-900 bg-zinc-950/10">
+                    <CreditCard className="h-8 w-8 text-zinc-600 mx-auto mb-2.5" />
+                    <p className="text-xs text-zinc-500">No payment or subscription logs found.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-zinc-900 bg-zinc-950/10">
+                    <table className="w-full border-collapse text-left text-xs text-zinc-300">
+                      <thead>
+                        <tr className="border-b border-zinc-900 bg-zinc-950/40 text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
+                          <th className="py-3 px-4">Date</th>
+                          <th className="py-3 px-4">Plan</th>
+                          <th className="py-3 px-4">Transaction ID</th>
+                          <th className="py-3 px-4">Amount</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-900">
+                        {paymentHistory.map((log) => {
+                          let statusClass = 'bg-zinc-900 text-zinc-400 border-zinc-800';
+                          if (log.status === 'SUCCESS') {
+                            statusClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                          } else if (log.status === 'FAILED') {
+                            statusClass = 'bg-red-500/10 text-red-400 border-red-500/20';
+                          } else if (log.status === 'CANCELLED') {
+                            statusClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                          } else if (log.status === 'EXPIRED') {
+                            statusClass = 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
+                          }
+
+                          return (
+                            <tr key={log.id} className="hover:bg-zinc-950/20 transition-colors">
+                              <td className="py-3.5 px-4 font-mono text-[11px] whitespace-nowrap">
+                                {new Date(log.createdAt).toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </td>
+                              <td className="py-3.5 px-4 font-bold tracking-wider text-[10px]">
+                                <span className={`px-2 py-0.5 rounded border ${
+                                  log.plan === 'PRO'
+                                    ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                    : log.plan === 'ENTERPRISE'
+                                    ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                                    : 'bg-zinc-900 text-zinc-500 border-zinc-800'
+                                }`}>
+                                  {log.plan}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 font-mono text-[11px] text-zinc-500 select-all truncate max-w-[120px]" title={log.transactionId}>
+                                {log.transactionId}
+                              </td>
+                              <td className="py-3.5 px-4 font-semibold text-zinc-200">
+                                {log.amount > 0 ? `$${(log.amount / 100).toFixed(2)} ${log.currency}` : '—'}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${statusClass}`}>
+                                  {log.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-zinc-500 text-[11px] max-w-[200px] truncate" title={log.errorMessage || ''}>
+                                {log.errorMessage || '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

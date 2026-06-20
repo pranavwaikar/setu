@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Headers, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, Headers, UseGuards, Req, Get } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -26,6 +26,18 @@ export class PaymentsController {
       amount,
       'USD'
     );
+  }
+
+  @Get('history')
+  @UseGuards(AuthGuard)
+  async getPaymentHistory(@CurrentUser() user: any) {
+    return this.paymentsService.getPaymentHistory(user.id);
+  }
+
+  @Post('cancel')
+  @UseGuards(AuthGuard)
+  async cancelSubscription(@CurrentUser() user: any) {
+    return this.paymentsService.cancelSubscription(user.id);
   }
 
   @Post('webhook')

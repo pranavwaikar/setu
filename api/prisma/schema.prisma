@@ -43,6 +43,9 @@ model User {
   resetToken        String?     @map("reset_token")
   resetTokenExpires DateTime?   @map("reset_token_expires")
 
+  subscriptionId     String?     @map("subscription_id")
+  subscriptionStatus String?     @map("subscription_status")
+
   @@map("users")
 }
 
@@ -90,6 +93,7 @@ model PaymentLog {
   currency      String   @default("USD")
   status        String   
   plan          Plan
+  errorMessage  String?  @map("error_message")
   createdAt     DateTime @default(now()) @map("created_at")
 
   @@map("payment_logs")
