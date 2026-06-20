@@ -142,7 +142,7 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValueOnce({
         ...mockUser,
         subscriptionId: 'sub_active_123',
-      });
+      } as any);
       const result = await service.cancelSubscription('user-123');
       expect(result.success).toBe(true);
       expect(result.isMock).toBe(true);

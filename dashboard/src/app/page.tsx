@@ -1576,7 +1576,7 @@ export default function Home() {
                       )}
                     </button>
                   )}
-                  {user?.plan !== 'FREE' && user?.subscriptionStatus === 'active' && (
+                  {user?.plan !== 'FREE' && user?.subscriptionStatus !== 'cancelled' && user?.subscriptionStatus !== 'failed' && user?.subscriptionStatus !== 'expired' && (
                     <button
                       onClick={handleCancelSubscription}
                       disabled={loadingAction === 'cancel'}

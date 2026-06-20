@@ -458,6 +458,53 @@ Wildcard certificates (`*.setu.yourdomain.com`) require **DNS-01 challenge** —
 
 ---
 
+## Dodo Payments Integration
+
+Setu integrates with [Dodo Payments](https://dodopayments.com/) to process Pro/Enterprise plan upgrades, handle recurring subscription payments, and manage webhook-driven subscription events (activations, failed payments, cancellations, and expirations).
+
+### Setup Guide
+
+Follow these steps to configure subscription billing for your self-hosted instance:
+
+#### 1. Create a Dodo Payments Account
+Sign up on the [Dodo Payments Dashboard](https://test.dodopayments.com/ or https://dodopayments.com/).
+
+#### 2. Create a Subscription Product
+1. In the Dodo Payments dashboard, navigate to **Products**.
+2. Click **Create Product**.
+3. Set your product details:
+   - **Name**: `Setu Pro`
+   - **Billing Type**: `Subscription / Recurring`
+   - **Price**: `$5.00 USD` (or your preferred price) per month
+4. Copy the generated **Product ID** (e.g., `prod_pro_123`). This will be set as `DODO_PRO_PRODUCT_ID`.
+
+#### 3. Retrieve your API Key
+1. Navigate to **Developer Settings** -> **API Keys**.
+2. Create a new API Key (Test Mode or Live Mode depending on your environment).
+3. Copy the key. This will be set as `DODO_API_KEY`.
+
+#### 4. Configure Webhooks
+Webhooks are essential to process subscription states (upgrades, failures, cancellations, and renewals) asynchronously.
+1. Navigate to **Developer Settings** -> **Webhooks**.
+2. Click **Add Endpoint**.
+3. Set **Endpoint URL** to:
+   ```text
+   https://yourdomain.com/api/payments/webhook
+   ```
+   *(Replace `yourdomain.com` with your Setu public domain).*
+4. Select the following **Webhook Events**:
+   - `checkout.completed` (handles initial checkout completion)
+   - `subscription.active` (handles subscription activation)
+   - `payment.succeeded` (handles recurring payment successes)
+   - `payment.failed` (handles failed billing attempts)
+   - `subscription.failed` (handles failed subscription renewals)
+   - `subscription.cancelled` (handles subscription cancellations)
+   - `subscription.expired` (handles subscription expirations)
+5. Save the Webhook.
+6. Copy the **Webhook Signing Secret** (starts with `whsec_`). This will be set as `DODO_WEBHOOK_SECRET` to enable signature verification on all incoming webhooks.
+
+---
+
 ## Admin Panel (AdminJS)
 
 Setu features a built-in admin dashboard using [AdminJS](https://github.com/SoftwareBrothers/adminjs) to manage database models directly.
