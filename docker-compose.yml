@@ -44,6 +44,8 @@ services:
       DODO_API_KEY: ${DODO_API_KEY:-dp_test_d8f28c29188e7bcf5f1a}
       DODO_TEST_MODE: ${DODO_TEST_MODE:-true}
       DODO_WEBHOOK_SECRET: ${DODO_WEBHOOK_SECRET:-}
+      DODO_PRO_PRODUCT_ID: ${DODO_PRO_PRODUCT_ID:-prod_pro_123}
+
 
     depends_on:
       postgres:

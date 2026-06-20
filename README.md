@@ -376,6 +376,8 @@ These are handled automatically by `docker-compose.yml`, but can be overridden:
 | `DODO_API_KEY` | `dp_test_d8f28c29188e7bcf5f1a` | API key for Dodo Payments (defaults to placeholder sandbox test mode key) |
 | `DODO_TEST_MODE` | `true` | Enable test mode sandbox environment for Dodo Payments |
 | `DODO_WEBHOOK_SECRET` | *(None)* | Webhook Secret Key for verifying signatures (required for secure production webhooks at `/api/payments/webhook`) |
+| `DODO_PRO_PRODUCT_ID` | `prod_pro_123` | Product ID created in Dodo Payments dashboard for the PRO tier upgrades |
+
 
 > [!IMPORTANT]
 > **Build-Time Compilation:** Because Next.js compiles the dashboard's domain configuration (`NEXT_PUBLIC_TUNNEL_DOMAIN` and `NEXT_PUBLIC_PUBLIC_DOMAIN`) into the client-side JavaScript bundle during the Docker build process, the `TUNNEL_DOMAIN` and `PUBLIC_DOMAIN` environment variables **must be defined before deploying or building the service in Coolify**.
