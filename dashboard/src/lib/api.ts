@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   email: string;
-  plan: 'FREE' | 'PRO';
+  plan: 'FREE' | 'PRO' | 'ENTERPRISE';
   createdAt: string;
   firstName?: string;
   lastName?: string;
@@ -153,5 +153,19 @@ export const api = {
   // Tunnels
   async listTunnels(): Promise<Tunnel[]> {
     return apiFetch<Tunnel[]>('tunnels');
+  },
+
+  // Payments
+  async createCheckoutSession(): Promise<{ checkoutUrl: string; isMock: boolean; isTestMode?: boolean }> {
+    return apiFetch<{ checkoutUrl: string; isMock: boolean; isTestMode?: boolean }>('payments/checkout', {
+      method: 'POST',
+    });
+  },
+
+  async simulatePaymentSuccess(plan?: 'PRO' | 'ENTERPRISE'): Promise<{ success: boolean }> {
+    return apiFetch<{ success: boolean }>('payments/mock-success', {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
+    });
   },
 };

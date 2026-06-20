@@ -62,6 +62,12 @@ export class AdminPanelModule {
                       },
                     },
                   },
+                  {
+                    resource: { model: getModelByName('PaymentLog'), client: prisma },
+                    options: {
+                      navigation: { name: 'Billing & Payments', icon: 'CreditCard' },
+                    },
+                  },
                 ],
                 branding: {
                   companyName: 'Setu Admin Panel',

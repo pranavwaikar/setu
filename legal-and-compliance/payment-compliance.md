@@ -2,19 +2,23 @@
 
 **Last Updated: June 2026**
 
-This document details the payment processing policy and PCI compliance for the Setu project and its public gateway demo.
+This document details the payment processing policy, billing terms, and PCI compliance for the Setu project and its public gateway.
 
 ---
 
-## 1. No Payment Processing
-*   **Free Service:** The public Setu demonstration gateway hosted by Helios Logic at `setu.helios-logic.com` is completely free of charge.
-*   **No Financial Transactions:** We do not collect, process, store, or transmit credit card details, bank account information, or any other financial payment information.
-*   **PCI-DSS Exemption:** Because the Setu platform does not handle financial transactions, credit card data, or processing, the platform is exempt from Payment Card Industry Data Security Standard (PCI-DSS) auditing.
+## 1. Third-Party Payment Processing & Merchant of Record
+*   **Third-Party Delegate:** All financial transactions, subscriptions, and invoicing are handled securely by our third-party payment partner and Merchant of Record, **Dodo Payments**.
+*   **No Direct Processing or Storage:** We do not collect, process, store, or transmit credit card numbers, bank details, or cardholder credentials on Setu's database or servers.
+*   **PCI-DSS Compliance:** Because all payment details are processed directly within Dodo Payments' secure environment (via Dodo Payments Overlay Checkout), the payment flow is fully PCI-DSS compliant. Setu is exempt from direct PCI auditing as we never handle cardholder data directly.
 
-## 2. Third-Party Integrations
-In the event that commercial plugins, integrations, or optional paid tiers are added in the future:
-*   All credit card processing will be delegated to industry-standard, PCI-DSS Level 1 compliant third-party payment processors (e.g., Stripe, PayPal).
-*   Helios Logic will never directly receive or store raw cardholder data on its own servers.
+## 2. Subscription Tiers
+We offer three user plans:
+*   **Free Plan:** Includes up to 10 static subdomains, 3 active tunnels, and 1 GB/day traffic at no cost.
+*   **Pro Plan ($5.00/month):** Includes up to 50 subdomains/endpoints. Upgrades are processed securely via Dodo Payments.
+*   **Enterprise Plan ($250/month):** Includes fully managed subdomain deployment for the entire organization. Managed directly or by contacting `sales@contact.helios-logic.com`.
+
+## 3. Webhook Security & Verification
+*   We secure all incoming billing status notifications by validating HMAC-SHA256 request signatures on our billing callback endpoint (`/api/payments/webhook`) using the standard `webhook-signature` headers and keys managed through Dodo Payments.
 
 ---
 *Developed & operated by Helios Logic.*

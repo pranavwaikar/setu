@@ -1,0 +1,193 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { PaymentsService } from './payments.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { BadRequestException } from '@nestjs/common';
+
+// Mock Resend dependency
+const mockSend = jest.fn().mockResolvedValue({ id: 'mock-email-id' });
+jest.mock('resend', () => {
+  return {
+    Resend: jest.fn().mockImplementation(() => {
+      return {
+        emails: {
+          send: mockSend,
+        },
+      };
+    }),
+  };
+});
+
+// Mock DodoPayments dependency
+const mockUnwrap = jest.fn();
+jest.mock('dodopayments', () => {
+  return {
+    DodoPayments: jest.fn().mockImplementation(() => {
+      return {
+        webhooks: {
+          unwrap: mockUnwrap,
+        },
+      };
+    }),
+  };
+});
+
+describe('PaymentsService - Email & Webhook verification tests', () => {
+  let service: PaymentsService;
+  let prismaService: PrismaService;
+  let originalEnv: NodeJS.ProcessEnv;
+
+  const mockUser = {
+    id: 'user-123',
+    email: 'test@example.com',
+    firstName: 'Alice',
+    lastName: 'Smith',
+    plan: 'FREE',
+  };
+
+  const mockPrismaService = {
+    user: {
+      findUnique: jest.fn().mockResolvedValue(mockUser),
+      update: jest.fn().mockResolvedValue({ ...mockUser, plan: 'PRO' }),
+    },
+    paymentLog: {
+      create: jest.fn().mockResolvedValue({ id: 'log-123' }),
+    },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    originalEnv = { ...process.env };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PaymentsService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<PaymentsService>(PaymentsService);
+    prismaService = module.get<PrismaService>(PrismaService);
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  describe('upgradeUserPlan', () => {
+    it('should upgrade the user plan and NOT send an email if ENABLE_EMAIL_VERFICATION is not true', async () => {
+      process.env.ENABLE_EMAIL_VERFICATION = 'false';
+      process.env.RESEND_API_KEY = 're_real_api_key_123';
+
+      const result = await service.upgradeUserPlan('user-123', 'PRO', 'tx_123', 500, 'USD');
+
+      expect(result.success).toBe(true);
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: { plan: 'PRO' },
+      });
+      expect(mockPrismaService.paymentLog.create).toHaveBeenCalled();
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('should upgrade the user plan and send an email if ENABLE_EMAIL_VERFICATION is true and a non-placeholder RESEND_API_KEY is configured', async () => {
+      process.env.ENABLE_EMAIL_VERFICATION = 'true';
+      process.env.RESEND_API_KEY = 're_real_api_key_123';
+
+      const result = await service.upgradeUserPlan('user-123', 'PRO', 'tx_123', 500, 'USD');
+
+      expect(result.success).toBe(true);
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: { plan: 'PRO' },
+      });
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
+        to: 'test@example.com',
+        subject: expect.stringContaining('PRO'),
+      }));
+    });
+
+    it('should upgrade the user plan and skip email sending if ENABLE_EMAIL_VERFICATION is true but RESEND_API_KEY is placeholder', async () => {
+      process.env.ENABLE_EMAIL_VERFICATION = 'true';
+      process.env.RESEND_API_KEY = 're_placeholder_key';
+
+      const result = await service.upgradeUserPlan('user-123', 'PRO', 'tx_123', 500, 'USD');
+
+      expect(result.success).toBe(true);
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleWebhook', () => {
+    const webhookPayload = {
+      event_type: 'checkout.completed',
+      data: {
+        transaction_id: 'tx_dodo_123',
+        amount: 500,
+        currency: 'USD',
+        metadata: {
+          userId: 'user-123',
+          plan: 'PRO',
+        },
+      },
+    };
+
+    it('should process webhook directly without verification if DODO_WEBHOOK_SECRET is not set', async () => {
+      delete process.env.DODO_WEBHOOK_SECRET;
+
+      const result = await service.handleWebhook(webhookPayload, JSON.stringify(webhookPayload), {});
+
+      expect(result).toEqual({ received: true });
+      expect(mockUnwrap).not.toHaveBeenCalled();
+      expect(mockPrismaService.user.update).toHaveBeenCalled();
+    });
+
+    it('should call unwrap and process webhook if DODO_WEBHOOK_SECRET is set and verification succeeds', async () => {
+      process.env.DODO_WEBHOOK_SECRET = 'whsec_secret_123';
+      mockUnwrap.mockReturnValue(webhookPayload);
+
+      const result = await service.handleWebhook(
+        { some: 'dummy_parsed_body' },
+        'raw_body_string',
+        {
+          webhookId: 'web_id_123',
+          webhookSignature: 'sig_123',
+          webhookTimestamp: 'time_123',
+        },
+      );
+
+      expect(result).toEqual({ received: true });
+      expect(mockUnwrap).toHaveBeenCalledWith('raw_body_string', {
+        headers: {
+          'webhook-id': 'web_id_123',
+          'webhook-signature': 'sig_123',
+          'webhook-timestamp': 'time_123',
+        },
+      });
+      expect(mockPrismaService.user.update).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException and NOT process webhook if DODO_WEBHOOK_SECRET is set but verification fails', async () => {
+      process.env.DODO_WEBHOOK_SECRET = 'whsec_secret_123';
+      mockUnwrap.mockImplementation(() => {
+        throw new Error('Invalid signature');
+      });
+
+      await expect(
+        service.handleWebhook(
+          { some: 'dummy_parsed_body' },
+          'raw_body_string',
+          {
+            webhookId: 'web_id_123',
+            webhookSignature: 'sig_123',
+            webhookTimestamp: 'time_123',
+          },
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled();
+    });
+  });
+});

@@ -10,6 +10,7 @@ generator client {
 enum Plan {
   FREE
   PRO
+  ENTERPRISE
 }
 
 enum SubdomainStatus {
@@ -32,6 +33,7 @@ model User {
   subdomains        Subdomain[]
   tunnels           Tunnel[]
   apiKeys           ApiKey[]
+  paymentLogs       PaymentLog[]
 
   firstName         String?     @map("first_name")
   lastName          String?     @map("last_name")
@@ -77,4 +79,18 @@ model ApiKey {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("api_keys")
+}
+
+model PaymentLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String   @unique @map("transaction_id")
+  amount        Int      
+  currency      String   @default("USD")
+  status        String   
+  plan          Plan
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("payment_logs")
 }

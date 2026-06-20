@@ -15,18 +15,34 @@ process.on('uncaughtException', (err) => {
 });
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Enforce check for weak/default secrets in production
   if (process.env.NODE_ENV === 'production') {
     const jwtSecret = process.env.JWT_SECRET;
     const gatewayToken = process.env.GATEWAY_API_TOKEN;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminCookiePassword = process.env.ADMIN_COOKIE_PASSWORD;
+
     if (!jwtSecret || jwtSecret === 'supersecretjwtkey') {
       console.error('❌ CRITICAL SECURITY ERROR: Weak or missing JWT_SECRET in production!');
       process.exit(1);
     }
     if (!gatewayToken || gatewayToken === 'default-gateway-secret') {
       console.error('❌ CRITICAL SECURITY ERROR: Weak or missing GATEWAY_API_TOKEN in production!');
+      process.exit(1);
+    }
+    if (!adminEmail || adminEmail === 'admin@setu.com') {
+      console.error('❌ CRITICAL SECURITY ERROR: Weak or missing ADMIN_EMAIL in production!');
+      process.exit(1);
+    }
+    if (!adminPassword || adminPassword === 'adminpassword123') {
+      console.error('❌ CRITICAL SECURITY ERROR: Weak or missing ADMIN_PASSWORD in production!');
+      process.exit(1);
+    }
+    if (!adminCookiePassword || adminCookiePassword === 'sessionsecretcookiekey1234567890') {
+      console.error('❌ CRITICAL SECURITY ERROR: Weak or missing ADMIN_COOKIE_PASSWORD in production!');
       process.exit(1);
     }
   }

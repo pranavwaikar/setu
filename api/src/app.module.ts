@@ -7,9 +7,18 @@ import { SubdomainsModule } from './subdomains/subdomains.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { TunnelsModule } from './tunnels/tunnels.module';
 import { AdminPanelModule } from './admin/admin.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SubdomainsModule, ApiKeysModule, TunnelsModule, AdminPanelModule.register()],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    SubdomainsModule,
+    ApiKeysModule,
+    TunnelsModule,
+    AdminPanelModule.register(),
+    PaymentsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

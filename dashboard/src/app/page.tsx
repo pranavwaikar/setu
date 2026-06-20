@@ -19,7 +19,10 @@ import {
   Wifi,
   WifiOff,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  CreditCard,
+  Mail,
+  Shield
 } from 'lucide-react';
 import { api, User, Subdomain, ApiKey, Tunnel } from '../lib/api';
 
@@ -27,7 +30,10 @@ export default function Home() {
   // Navigation & Session State
   const [authStatus, setAuthStatus] = useState<'loading' | 'unauthenticated' | 'authenticated'>('loading');
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'tunnels' | 'subdomains' | 'api-keys' | 'instructions' | 'profile'>('tunnels');
+  const [activeTab, setActiveTab] = useState<'tunnels' | 'subdomains' | 'api-keys' | 'instructions' | 'profile' | 'billing'>('tunnels');
+  const [showMockCheckout, setShowMockCheckout] = useState(false);
+  const [mockCheckoutUrl, setMockCheckoutUrl] = useState('');
+  const [isCheckoutTestMode, setIsCheckoutTestMode] = useState(false);
   
   // Forms & Inputs
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -67,8 +73,54 @@ export default function Home() {
       setBaseDomain(window.location.hostname);
       setBaseDomainWithPort(window.location.host);
       setProtocol(window.location.protocol);
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('status') === 'success') {
+        showSuccess('Payment successful! Your account has been upgraded to PRO.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      const handlePaymentMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'payment_success') {
+          setShowMockCheckout(false);
+          setMockCheckoutUrl('');
+          showSuccess('Successfully upgraded to PRO plan!');
+          checkAuth();
+        } else if (event.data?.type === 'payment_cancel') {
+          setShowMockCheckout(false);
+          setMockCheckoutUrl('');
+        }
+      };
+
+      window.addEventListener('message', handlePaymentMessage);
+      return () => window.removeEventListener('message', handlePaymentMessage);
     }
   }, []);
+
+  const handleUpgradeToPro = async () => {
+    setLoadingAction('upgrade');
+    setErrorMsg(null);
+    try {
+      const res = await api.createCheckoutSession();
+      setIsCheckoutTestMode(!!res.isTestMode);
+      if (res.isMock) {
+        setMockCheckoutUrl(res.checkoutUrl);
+        setShowMockCheckout(true);
+      } else {
+        if (typeof (window as any).DodoPayments !== 'undefined') {
+          (window as any).DodoPayments.open({
+            checkoutUrl: res.checkoutUrl,
+          });
+        } else {
+          window.open(res.checkoutUrl, '_blank');
+        }
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to start upgrade process');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   // Poll active tunnels periodically if authenticated
   useEffect(() => {
@@ -418,6 +470,148 @@ export default function Home() {
               </p>
             </div>
           </div>
+          {/* Pricing Section */}
+          <div className="w-full mt-32 text-center z-10" id="pricing">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium mb-6">
+              <span>Flexible Plans</span>
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white via-white to-zinc-500 bg-clip-text text-transparent max-w-2xl mx-auto leading-tight">
+              Fair pricing for any scale.
+            </h2>
+            <p className="text-zinc-400 text-xs sm:text-sm max-w-md mx-auto mt-4 leading-relaxed">
+              Start exposing your local servers for free, then upgrade as your organization grows.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mx-auto mt-16 text-left">
+              {/* Free Plan */}
+              <div className="p-8 rounded-2xl border border-zinc-900 bg-zinc-950/40 flex flex-col justify-between hover:border-zinc-800 transition-all hover:scale-[1.01] duration-300 relative group">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Free Plan</h3>
+                  <p className="text-zinc-500 text-xs mt-1">For individuals and side projects.</p>
+                  <div className="mt-6 flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-white">$0</span>
+                    <span className="text-zinc-500 text-xs">/ month</span>
+                  </div>
+                  <ul className="mt-8 space-y-4 text-xs text-zinc-400">
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Claim up to 10 static subdomains</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Secure SSL/HTTPS connections</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>High-speed websocket tunnels</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Real-time inspector dashboard</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-8 pt-4">
+                  <Link
+                    href="/signup"
+                    className="block w-full py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-center font-bold text-xs text-zinc-200 transition-colors border border-zinc-800"
+                  >
+                    Get Started for Free
+                  </Link>
+                </div>
+              </div>
+
+              {/* Pro Plan */}
+              <div className="p-8 rounded-2xl border border-purple-500/30 bg-zinc-950/80 flex flex-col justify-between hover:border-purple-500/50 transition-all hover:scale-[1.02] duration-300 relative shadow-[0_0_30px_rgba(168,85,247,0.05)] overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-[40px] pointer-events-none" />
+                <div className="absolute top-4 right-4 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-bold tracking-wider uppercase">
+                  Popular
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    Pro Plan
+                  </h3>
+                  <p className="text-zinc-500 text-xs mt-1">For professional developers needing more capacity.</p>
+                  <div className="mt-6 flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-white">$5</span>
+                    <span className="text-zinc-500 text-xs">/ month</span>
+                  </div>
+                  <ul className="mt-8 space-y-4 text-xs text-zinc-400">
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span className="font-semibold text-zinc-200">50 concurrent endpoints / user</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Custom domain options</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Edge protection (Basic Auth)</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Layer-4 raw TCP tunneling</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Priority support</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-8 pt-4">
+                  <Link
+                    href="/signup"
+                    className="block w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-center font-bold text-xs text-white transition-all shadow-[0_0_15px_rgba(168,85,247,0.25)]"
+                  >
+                    Upgrade to Pro
+                  </Link>
+                </div>
+              </div>
+
+              {/* Enterprise Plan */}
+              <div className="p-8 rounded-2xl border border-zinc-900 bg-zinc-950/40 flex flex-col justify-between hover:border-zinc-800 transition-all hover:scale-[1.01] duration-300 relative">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Enterprise Plan</h3>
+                  <p className="text-zinc-500 text-xs mt-1">For organizations requiring complete security control.</p>
+                  <div className="mt-6 flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-white">$250</span>
+                    <span className="text-zinc-500 text-xs">/ month</span>
+                  </div>
+                  <ul className="mt-8 space-y-4 text-xs text-zinc-400">
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span className="font-semibold text-zinc-200">Managed subdomain deployment for entire org</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Dedicated tunnel gateway clusters</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>SLA guaranteed uptime</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>Custom authentication integrations</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 shrink-0" />
+                      <span>24/7 dedicated support team</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-8 pt-4">
+                  <a
+                    href="mailto:sales@contact.helios-logic.com?subject=Setu Enterprise Plan Query"
+                    className="block w-full py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-center font-bold text-xs text-zinc-200 transition-colors border border-zinc-800"
+                  >
+                    Contact Sales
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         </main>
 
         {/* Footer */}
@@ -453,6 +647,9 @@ export default function Home() {
               <h4 className="font-semibold text-zinc-400 uppercase tracking-wider text-[10px]">Project</h4>
               <p className="text-zinc-500 text-[11px] leading-relaxed">
                 Licensed under the <a href="https://github.com/pranavwaikar/setu/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">AGPL-3.0 License</a>. Hosted by <a href="https://helios-logic.com" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">Helios Logic</a>.
+              </p>
+              <p className="text-zinc-500 text-[11px] leading-relaxed mt-2">
+                Need help or custom integrations? Contact us at <a href="mailto:sales@contact.helios-logic.com" className="text-purple-400 hover:underline font-semibold">sales@contact.helios-logic.com</a>.
               </p>
               <p className="text-[10px] text-zinc-600">
                 © {new Date().getFullYear()} Setu / Helios Logic. All rights reserved.
@@ -538,6 +735,17 @@ export default function Home() {
               <UserIcon className="h-4 w-4" />
               Developer Profile
             </button>
+            <button
+              onClick={() => setActiveTab('billing')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                activeTab === 'billing'
+                  ? 'bg-purple-500/10 text-purple-400 border-l-2 border-purple-500 pl-2.5'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
+              }`}
+            >
+              <CreditCard className="h-4 w-4" />
+              Billing & Subscriptions
+            </button>
           </nav>
         </div>
 
@@ -549,7 +757,13 @@ export default function Home() {
             </div>
             <div className="overflow-hidden">
               <p className="text-xs font-semibold truncate">{user?.email}</p>
-              <p className="text-[10px] text-purple-400 uppercase tracking-widest font-bold">
+              <p className={`text-[9px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded border inline-block mt-0.5 ${
+                user?.plan === 'PRO'
+                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                  : user?.plan === 'ENTERPRISE'
+                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                  : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+              }`}>
                 {user?.plan} PLAN
               </p>
             </div>
@@ -574,6 +788,7 @@ export default function Home() {
             {activeTab === 'api-keys' && 'API Keys Management'}
             {activeTab === 'instructions' && 'CLI Integration Guide'}
             {activeTab === 'profile' && 'Developer Profile'}
+            {activeTab === 'billing' && 'Billing & Subscriptions'}
           </h2>
 
           {/* Quick info */}
@@ -623,10 +838,10 @@ export default function Home() {
                 </div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Claimed Subdomains</p>
                 <h3 className="text-3xl font-extrabold mt-1 text-white">
-                  {subdomains.length} <span className="text-xs font-normal text-muted-foreground">/ 10</span>
+                  {subdomains.length} <span className="text-xs font-normal text-muted-foreground">/ {user?.plan === 'PRO' ? 50 : user?.plan === 'ENTERPRISE' ? 1000 : 10}</span>
                 </h3>
                 <p className="text-[10px] text-muted-foreground mt-2">
-                  Quota limit: 10 subdomains
+                  Quota limit: {user?.plan === 'PRO' ? 50 : user?.plan === 'ENTERPRISE' ? '1,000' : '10'} subdomains
                 </p>
               </div>
 
@@ -748,7 +963,7 @@ export default function Home() {
                   </div>
                   <button
                     type="submit"
-                    disabled={loadingAction === 'claim' || subdomains.length >= 10}
+                    disabled={loadingAction === 'claim' || subdomains.length >= (user?.plan === 'PRO' ? 50 : user?.plan === 'ENTERPRISE' ? 1000 : 10)}
                     className="px-5 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-semibold text-sm transition-colors cursor-pointer flex items-center justify-center gap-2 shrink-0"
                   >
                     {loadingAction === 'claim' ? (
@@ -1207,6 +1422,14 @@ export default function Home() {
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-widest bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">
                       {user?.plan} Plan
                     </span>
+                    {user?.plan === 'FREE' && (
+                      <button
+                        onClick={() => setActiveTab('billing')}
+                        className="text-[10px] text-purple-400 hover:text-purple-300 font-bold underline transition-colors"
+                      >
+                        Upgrade to Pro ➔
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -1257,8 +1480,195 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* Tab 6: Billing & Subscriptions */}
+          {activeTab === 'billing' && (
+            <div className="glass rounded-xl p-8 max-w-4xl mx-auto space-y-8 animate-fadeIn">
+              <div className="flex justify-between items-start pb-6 border-b border-zinc-900">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Billing & Subscriptions</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Manage your service plans, quotas, and subscription details.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Current Plan:</span>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold tracking-widest border uppercase ${
+                    user?.plan === 'PRO'
+                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      : user?.plan === 'ENTERPRISE'
+                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                      : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                  }`}>
+                    {user?.plan}
+                  </span>
+                </div>
+              </div>
+
+              {/* Active Plan Detail Box */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-6 rounded-xl border border-zinc-900 bg-zinc-950/20 space-y-4">
+                  <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Plan Highlights</h4>
+                  <div className="space-y-3 text-xs text-zinc-300">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Subdomains Limit</span>
+                      <span className="font-semibold">{user?.plan === 'PRO' ? '50' : user?.plan === 'ENTERPRISE' ? '1,000' : '10'} subdomains</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Custom Domain Mappings</span>
+                      <span className="font-semibold">{user?.plan === 'FREE' ? 'Not included' : 'Included'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Raw TCP Tunneling</span>
+                      <span className="font-semibold">{user?.plan === 'FREE' ? 'Not included' : 'Included'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Edge Protections</span>
+                      <span className="font-semibold">{user?.plan === 'FREE' ? 'Not included' : 'Basic Auth Included'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Billing Cycle</h4>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      {user?.plan === 'FREE' 
+                        ? 'You are currently running on the Free tier. There are no charges for this account.'
+                        : user?.plan === 'PRO'
+                        ? 'Your Pro plan is billed at $5.00 USD monthly via Dodo Payments.'
+                        : 'Your Enterprise plan is managed for your entire organization at $250.00 USD monthly.'
+                      }
+                    </p>
+                  </div>
+                  {user?.plan === 'FREE' && (
+                    <button
+                      onClick={handleUpgradeToPro}
+                      disabled={loadingAction === 'upgrade'}
+                      className="mt-4 w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      {loadingAction === 'upgrade' ? (
+                        <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                      ) : (
+                        'Upgrade to Pro ($5/mo)'
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Show Pricing Tier Options if Free user */}
+              {user?.plan === 'FREE' && (
+                <div className="pt-6 border-t border-zinc-900 space-y-6">
+                  <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider text-center">Available Upgrade Tiers</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Pro Tier Upgrade Card */}
+                    <div className="p-6 rounded-xl border border-purple-500/20 bg-zinc-950/40 relative overflow-hidden flex flex-col justify-between">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-[30px] pointer-events-none" />
+                      <div>
+                        <h5 className="text-sm font-bold text-white">PRO Plan</h5>
+                        <p className="text-zinc-500 text-[11px] mt-1">Unlock raw TCP tunneling, up to 50 endpoints, and edge authentication protection.</p>
+                        <div className="mt-4 flex items-baseline gap-1">
+                          <span className="text-2xl font-extrabold text-white">$5.00</span>
+                          <span className="text-zinc-500 text-[10px]">/ month</span>
+                        </div>
+                        <ul className="mt-4 space-y-2 text-[11px] text-zinc-400">
+                          <li className="flex items-center gap-2">
+                            <span className="h-1 w-1 bg-purple-500 rounded-full" />
+                            <span>Claim up to 50 active subdomains</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="h-1 w-1 bg-purple-500 rounded-full" />
+                            <span>Basic Authentication edge protection</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="h-1 w-1 bg-purple-500 rounded-full" />
+                            <span>Layer-4 raw TCP tunneling</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <button
+                        onClick={handleUpgradeToPro}
+                        disabled={loadingAction === 'upgrade'}
+                        className="mt-6 w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        {loadingAction === 'upgrade' ? (
+                          <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                        ) : (
+                          'Upgrade to Pro'
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Enterprise Plan Card */}
+                    <div className="p-6 rounded-xl border border-zinc-900 bg-zinc-950/40 flex flex-col justify-between">
+                      <div>
+                        <h5 className="text-sm font-bold text-white">ENTERPRISE Plan</h5>
+                        <p className="text-zinc-500 text-[11px] mt-1">Fully managed subdomains and custom deployments for your entire team or organization.</p>
+                        <div className="mt-4 flex items-baseline gap-1">
+                          <span className="text-2xl font-extrabold text-white">$250.00</span>
+                          <span className="text-zinc-500 text-[10px]">/ month</span>
+                        </div>
+                        <ul className="mt-4 space-y-2 text-[11px] text-zinc-400">
+                          <li className="flex items-center gap-2">
+                            <span className="h-1 w-1 bg-indigo-500 rounded-full" />
+                            <span>Fully managed subdomain deployment for entire org</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="h-1 w-1 bg-indigo-500 rounded-full" />
+                            <span>Dedicated tunnel gateway instances</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="h-1 w-1 bg-indigo-500 rounded-full" />
+                            <span>Guaranteed SLA & Uptime Support</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <a
+                        href="mailto:sales@contact.helios-logic.com?subject=Setu Enterprise Plan Upgrade Request"
+                        className="mt-6 block w-full py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-center font-bold text-xs text-zinc-200 rounded-lg transition-colors"
+                      >
+                        Contact Sales
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Mock Checkout Overlay Modal */}
+      {showMockCheckout && (
+        <div className="fixed inset-0 z-50 bg-[#09090b]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#09090b] border border-zinc-900 rounded-2xl overflow-hidden shadow-2xl relative">
+            <button
+              onClick={() => {
+                setShowMockCheckout(false);
+                setMockCheckoutUrl('');
+              }}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-zinc-200 transition-colors border border-zinc-800 cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+            <div className="p-4 border-b border-zinc-900">
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Overlay Sandbox Checkout</span>
+            </div>
+            {isCheckoutTestMode && (
+              <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2.5 text-yellow-400 text-xs flex items-center gap-2">
+                <span className="font-extrabold uppercase text-[9px] tracking-wider shrink-0 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">Test Mode</span>
+                <span className="truncate text-zinc-300">This checkout session is a mock simulation and does not accept real payments.</span>
+              </div>
+            )}
+            <div className="h-[600px] w-full">
+              <iframe
+                src={mockCheckoutUrl}
+                className="w-full h-full border-none"
+                title="Mock Sandbox Checkout"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -88,6 +88,12 @@ This requires Let's Encrypt with **DNS-01 challenge validation** (to prove owner
 The database keeps track of user registration, API keys, claimed subdomains, and historical tunnels:
 
 ```prisma
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
 model User {
   id           String      @id @default(uuid()) @db.Uuid
   email        String      @unique
@@ -97,6 +103,7 @@ model User {
   subdomains   Subdomain[]
   tunnels      Tunnel[]
   apiKeys      ApiKey[]
+  paymentLogs  PaymentLog[]
 }
 
 model Subdomain {
@@ -118,6 +125,18 @@ model Tunnel {
   localPort   Int          @map("local_port")
   status      TunnelStatus @default(OFFLINE)
   connectedAt DateTime?    @map("connected_at")
+}
+
+model PaymentLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String   @unique @map("transaction_id")
+  amount        Int      
+  currency      String   @default("USD")
+  status        String   
+  plan          Plan
+  createdAt     DateTime @default(now()) @map("created_at")
 }
 ```
 

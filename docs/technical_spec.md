@@ -12,8 +12,9 @@ The platform allows users to:
 - Create persistent tunnels from localhost to public URLs
 - Manage active tunnels
 - View tunnel analytics
-- Upgrade to paid plans in the future
+- Upgrade to paid plans (PRO and ENTERPRISE) via Dodo Payments Overlay Checkout
 - Bring custom domains
+
 
 Example:
 
@@ -39,12 +40,12 @@ The entire stack should be deployable using Docker Compose and run directly on a
 - Tunnel gateway
 - Wildcard subdomains
 - Free tier (10 subdomains)
+- Paid subscription plans (PRO & ENTERPRISE) via Dodo Payments Overlay Checkout
 - Docker Compose deployment
 - Coolify compatibility
 
 ## Future Goals
 
-- Paid plans
 - Custom domains
 - Team workspaces
 - Access control
@@ -273,21 +274,25 @@ HTTP-only cookies
 ## Free Plan
 
 Limits:
+- 10 static subdomains
+- 3 active tunnels
+- 1 GB/day traffic
 
-```text
-10 subdomains
-3 active tunnels
-1 GB/day traffic
-```
+## Pro Plan
 
-## Pro Plan (Future)
+Features:
+- $5.00/month
+- 50 subdomains / endpoints per user
+- Sandbox checkout simulation support
+- Integrated Dodo Payments Overlay Checkout
 
-```text
-100 subdomains
-Unlimited tunnels
-Custom domains
-Analytics
-```
+## Enterprise Plan
+
+Features:
+- $250.00/month
+- Fully managed subdomain deployment for the entire organization
+- Unlimited subdomains / endpoints
+- Contact support at `sales@contact.helios-logic.com`
 
 ---
 
@@ -296,11 +301,32 @@ Analytics
 ## users
 
 ```sql
+CREATE TYPE plan_enum AS ENUM ('FREE', 'PRO', 'ENTERPRISE');
+
 CREATE TABLE users (
   id UUID PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT,
-  plan TEXT DEFAULT 'free',
+  plan plan_enum DEFAULT 'FREE',
+  created_at TIMESTAMP NOT NULL,
+  first_name TEXT,
+  last_name TEXT
+);
+```
+
+---
+
+## payment_logs
+
+```sql
+CREATE TABLE payment_logs (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  transaction_id TEXT UNIQUE NOT NULL,
+  amount INTEGER NOT NULL,
+  currency TEXT DEFAULT 'USD',
+  status TEXT NOT NULL,
+  plan plan_enum NOT NULL,
   created_at TIMESTAMP NOT NULL
 );
 ```
@@ -632,10 +658,11 @@ Estimated: 1 week
 
 Commercial Features
 
-- Billing
+- Billing (Completed via Dodo Payments Overlay Checkout & Webhook Signature Verification)
 - Custom domains
 - Teams
 - API access
+
 
 Estimated: 2–4 weeks
 

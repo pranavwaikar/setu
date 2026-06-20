@@ -19,7 +19,7 @@ export class SubdomainsService {
   async claim(userId: string, hostname: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { firstName: true, lastName: true },
+      select: { firstName: true, lastName: true, plan: true },
     });
 
     const cleanFirst = (user?.firstName || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -49,12 +49,15 @@ export class SubdomainsService {
       throw new BadRequestException('This subdomain name is reserved.');
     }
 
-    // 3. User quota check (Max 10 subdomains)
+    // 3. User quota check
     const count = await this.prisma.subdomain.count({
       where: { userId },
     });
-    if (count >= 10) {
-      throw new BadRequestException('You have reached your limit of 10 subdomains.');
+    const userPlan = user?.plan as string;
+    const maxSubdomains = userPlan === 'PRO' ? 50 : userPlan === 'ENTERPRISE' ? 1000 : 10;
+
+    if (count >= maxSubdomains) {
+      throw new BadRequestException(`You have reached your limit of ${maxSubdomains} subdomains.`);
     }
 
     // 4. Check uniqueness
