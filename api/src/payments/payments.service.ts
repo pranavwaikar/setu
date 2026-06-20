@@ -44,7 +44,7 @@ export class PaymentsService {
           email: user.email,
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Setu Developer',
         },
-        return_url: `${publicDomain}/billing?status=success`,
+        return_url: `${publicDomain}/?status=success`,
         metadata: {
           userId: user.id,
           plan: 'PRO',
@@ -133,17 +133,25 @@ export class PaymentsService {
       }
     }
 
-    if (body.event_type === 'checkout.completed' && body.data) {
+    const eventType = body.type || body.event_type;
+    console.log(`[Webhook Received] Event type: ${eventType}`, JSON.stringify(body));
+
+    if ((eventType === 'checkout.completed' || eventType === 'subscription.active' || eventType === 'payment.succeeded') && body.data) {
       const data = body.data;
       const userId = data.metadata?.userId;
       const plan = data.metadata?.plan === 'ENTERPRISE' ? 'ENTERPRISE' : 'PRO';
-      const transactionId = data.transaction_id || data.id || 'tx_' + Math.random().toString(36).substring(7);
-      const amount = data.amount || (plan === 'ENTERPRISE' ? 25000 : 500);
+      const transactionId = data.payment_id || data.subscription_id || data.transaction_id || data.id || 'tx_' + Math.random().toString(36).substring(7);
+      const amount = data.total_amount || data.amount || data.recurring_pre_tax_amount || (plan === 'ENTERPRISE' ? 25000 : 500);
       const currency = data.currency || 'USD';
 
       if (userId) {
+        console.log(`[Webhook Success] Upgrading user ${userId} to ${plan} (Tx/Sub: ${transactionId})`);
         await this.upgradeUserPlan(userId, plan, transactionId, amount, currency);
+      } else {
+        console.warn(`[Webhook Warning] Missing userId in metadata:`, data.metadata);
       }
+    } else {
+      console.log(`[Webhook Ignored] Event type ${eventType} is not checkout.completed, subscription.active, or payment.succeeded`);
     }
     return { received: true };
   }
@@ -157,12 +165,6 @@ export class PaymentsService {
     amount: number,
     currency: string,
   ) {
-    const enableEmailVerification = process.env.ENABLE_EMAIL_VERFICATION === 'true';
-    if (!enableEmailVerification) {
-      console.log(`[Email Skipped] Skipping purchase receipt email to ${email} because ENABLE_EMAIL_VERFICATION is false.`);
-      return;
-    }
-
     const resendApiKey = process.env.RESEND_API_KEY || 're_placeholder_key';
     const isPlaceholder = resendApiKey === 're_placeholder_key' || resendApiKey.includes('placeholder');
     

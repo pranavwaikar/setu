@@ -75,6 +75,9 @@ export default function Home() {
       setProtocol(window.location.protocol);
 
       const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'billing' || params.get('status') === 'success') {
+        setActiveTab('billing');
+      }
       if (params.get('status') === 'success') {
         showSuccess('Payment successful! Your account has been upgraded to PRO.');
         checkAuth();

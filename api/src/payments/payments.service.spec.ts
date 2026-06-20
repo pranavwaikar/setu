@@ -77,7 +77,7 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
   });
 
   describe('upgradeUserPlan', () => {
-    it('should upgrade the user plan and NOT send an email if ENABLE_EMAIL_VERFICATION is not true', async () => {
+    it('should upgrade the user plan and send an email if a non-placeholder RESEND_API_KEY is configured (even if ENABLE_EMAIL_VERFICATION is false)', async () => {
       process.env.ENABLE_EMAIL_VERFICATION = 'false';
       process.env.RESEND_API_KEY = 're_real_api_key_123';
 
@@ -89,28 +89,13 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
         data: { plan: 'PRO' },
       });
       expect(mockPrismaService.paymentLog.create).toHaveBeenCalled();
-      expect(mockSend).not.toHaveBeenCalled();
-    });
-
-    it('should upgrade the user plan and send an email if ENABLE_EMAIL_VERFICATION is true and a non-placeholder RESEND_API_KEY is configured', async () => {
-      process.env.ENABLE_EMAIL_VERFICATION = 'true';
-      process.env.RESEND_API_KEY = 're_real_api_key_123';
-
-      const result = await service.upgradeUserPlan('user-123', 'PRO', 'tx_123', 500, 'USD');
-
-      expect(result.success).toBe(true);
-      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-123' },
-        data: { plan: 'PRO' },
-      });
       expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
         to: 'test@example.com',
         subject: expect.stringContaining('PRO'),
       }));
     });
 
-    it('should upgrade the user plan and skip email sending if ENABLE_EMAIL_VERFICATION is true but RESEND_API_KEY is placeholder', async () => {
-      process.env.ENABLE_EMAIL_VERFICATION = 'true';
+    it('should upgrade the user plan and skip email sending if RESEND_API_KEY is placeholder', async () => {
       process.env.RESEND_API_KEY = 're_placeholder_key';
 
       const result = await service.upgradeUserPlan('user-123', 'PRO', 'tx_123', 500, 'USD');
@@ -121,7 +106,7 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
   });
 
   describe('handleWebhook', () => {
-    const webhookPayload = {
+    const checkoutCompletedPayload = {
       event_type: 'checkout.completed',
       data: {
         transaction_id: 'tx_dodo_123',
@@ -134,10 +119,56 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
       },
     };
 
-    it('should process webhook directly without verification if DODO_WEBHOOK_SECRET is not set', async () => {
+    const subscriptionActivePayload = {
+      type: 'subscription.active',
+      data: {
+        subscription_id: 'sub_dodo_123',
+        recurring_pre_tax_amount: 500,
+        currency: 'USD',
+        metadata: {
+          userId: 'user-123',
+          plan: 'PRO',
+        },
+      },
+    };
+
+    const paymentSucceededPayload = {
+      type: 'payment.succeeded',
+      data: {
+        payment_id: 'pay_dodo_123',
+        total_amount: 500,
+        currency: 'USD',
+        metadata: {
+          userId: 'user-123',
+          plan: 'PRO',
+        },
+      },
+    };
+
+    it('should process checkout.completed webhook directly without verification if DODO_WEBHOOK_SECRET is not set', async () => {
       delete process.env.DODO_WEBHOOK_SECRET;
 
-      const result = await service.handleWebhook(webhookPayload, JSON.stringify(webhookPayload), {});
+      const result = await service.handleWebhook(checkoutCompletedPayload, JSON.stringify(checkoutCompletedPayload), {});
+
+      expect(result).toEqual({ received: true });
+      expect(mockUnwrap).not.toHaveBeenCalled();
+      expect(mockPrismaService.user.update).toHaveBeenCalled();
+    });
+
+    it('should process subscription.active webhook directly without verification if DODO_WEBHOOK_SECRET is not set', async () => {
+      delete process.env.DODO_WEBHOOK_SECRET;
+
+      const result = await service.handleWebhook(subscriptionActivePayload, JSON.stringify(subscriptionActivePayload), {});
+
+      expect(result).toEqual({ received: true });
+      expect(mockUnwrap).not.toHaveBeenCalled();
+      expect(mockPrismaService.user.update).toHaveBeenCalled();
+    });
+
+    it('should process payment.succeeded webhook directly without verification if DODO_WEBHOOK_SECRET is not set', async () => {
+      delete process.env.DODO_WEBHOOK_SECRET;
+
+      const result = await service.handleWebhook(paymentSucceededPayload, JSON.stringify(paymentSucceededPayload), {});
 
       expect(result).toEqual({ received: true });
       expect(mockUnwrap).not.toHaveBeenCalled();
@@ -146,7 +177,7 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
 
     it('should call unwrap and process webhook if DODO_WEBHOOK_SECRET is set and verification succeeds', async () => {
       process.env.DODO_WEBHOOK_SECRET = 'whsec_secret_123';
-      mockUnwrap.mockReturnValue(webhookPayload);
+      mockUnwrap.mockReturnValue(checkoutCompletedPayload);
 
       const result = await service.handleWebhook(
         { some: 'dummy_parsed_body' },
