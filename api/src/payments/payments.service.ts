@@ -77,6 +77,16 @@ export class PaymentsService {
       throw new BadRequestException('User not found');
     }
 
+    // Check if transaction was already processed (idempotency)
+    const existingLog = await (this.prisma as any).paymentLog.findUnique({
+      where: { transactionId },
+    });
+
+    if (existingLog) {
+      console.log(`[Payment Log] Transaction ${transactionId} already logged. Skipping duplicate upgrade/email.`);
+      return { success: true, logId: existingLog.id };
+    }
+
     // 1. Update user plan
     await this.prisma.user.update({
       where: { id: userId },
@@ -136,7 +146,23 @@ export class PaymentsService {
     const eventType = body.type || body.event_type;
     console.log(`[Webhook Received] Event type: ${eventType}`, JSON.stringify(body));
 
-    if ((eventType === 'checkout.completed' || eventType === 'subscription.active' || eventType === 'payment.succeeded') && body.data) {
+    if (eventType === 'subscription.active' && body.data) {
+      const data = body.data;
+      const userId = data.metadata?.userId;
+      const plan = data.metadata?.plan === 'ENTERPRISE' ? 'ENTERPRISE' : 'PRO';
+
+      if (userId) {
+        console.log(`[Webhook Success] Provisioning plan: upgrading user ${userId} to ${plan} via subscription.active`);
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            plan: plan as Plan,
+          },
+        });
+      } else {
+        console.warn(`[Webhook Warning] Missing userId in metadata:`, data.metadata);
+      }
+    } else if ((eventType === 'checkout.completed' || eventType === 'payment.succeeded') && body.data) {
       const data = body.data;
       const userId = data.metadata?.userId;
       const plan = data.metadata?.plan === 'ENTERPRISE' ? 'ENTERPRISE' : 'PRO';
@@ -145,13 +171,13 @@ export class PaymentsService {
       const currency = data.currency || 'USD';
 
       if (userId) {
-        console.log(`[Webhook Success] Upgrading user ${userId} to ${plan} (Tx/Sub: ${transactionId})`);
+        console.log(`[Webhook Success] Processing payment transaction: upgrading user ${userId} to ${plan} (Tx/Sub: ${transactionId})`);
         await this.upgradeUserPlan(userId, plan, transactionId, amount, currency);
       } else {
         console.warn(`[Webhook Warning] Missing userId in metadata:`, data.metadata);
       }
     } else {
-      console.log(`[Webhook Ignored] Event type ${eventType} is not checkout.completed, subscription.active, or payment.succeeded`);
+      console.log(`[Webhook Ignored] Event type ${eventType} is not processed`);
     }
     return { received: true };
   }

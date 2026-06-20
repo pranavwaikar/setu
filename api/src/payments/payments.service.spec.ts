@@ -51,6 +51,7 @@ describe('PaymentsService - Email & Webhook verification tests', () => {
     },
     paymentLog: {
       create: jest.fn().mockResolvedValue({ id: 'log-123' }),
+      findUnique: jest.fn().mockResolvedValue(null),
     },
   };
 
