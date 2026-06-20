@@ -2,9 +2,11 @@
 
 <img src="./dashboard/public/setu-logo.png" alt="Setu Logo" width="100" height="100" style="border-radius: 24px; margin-bottom: 20px;" />
 
-# ⚡ Setu
+# Setu
 
-**Expose your local servers to the public internet — securely and instantly.**
+**Expose local servers to the internet with secure, instant public URLs.**
+
+**[Try Setu Live](https://setu.helios-logic.com) • [Claim a Free Subdomain](https://setu.helios-logic.com)**
 
 [![Release](https://img.shields.io/github/v/release/pranavwaikar/setu?style=flat-square)](https://github.com/pranavwaikar/setu/releases/latest)
 [![Go Version](https://img.shields.io/badge/go-1.24%2B-blue?style=flat-square)](https://go.dev/)
@@ -12,251 +14,92 @@
 
 </div>
 
----
-
-## What is Setu?
-
-Setu is a lightweight, self-hosted tunneling CLI that proxies your local development servers to publicly accessible subdomains — without relying on third-party services.
-
-### Live Demo
-
-A live instance of Setu is hosted and available at:
-👉 **[https://setu.helios-logic.com](https://setu.helios-logic.com)**
-
-Sign up for a free account, generate an API Key, claim your subdomains, and immediately tunnel your local servers.
-
----
-
-## Installation
-
-### Linux / macOS (recommended)
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash && setu expose 3000
 ```
 
-### Manual Download
-
-1. Visit the [Releases page](https://github.com/pranavwaikar/setu/releases/latest)
-2. Download the archive matching your OS and architecture:
-
-| OS      | Arch  | Archive                        |
-|---------|-------|--------------------------------|
-| Linux   | amd64 | `setu_linux_amd64.tar.gz`      |
-| Linux   | arm64 | `setu_linux_arm64.tar.gz`      |
-| macOS   | amd64 | `setu_darwin_amd64.tar.gz`     |
-| macOS   | arm64 | `setu_darwin_arm64.tar.gz`     |
-| Windows | amd64 | `setu_windows_amd64.zip`       |
-
-3. Extract and move the binary to a directory in your `$PATH`.
-
-### Windows (PowerShell)
-
-```powershell
-irm https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.ps1 | iex
-```
-
-### Verify installation
-
-```bash
-bash scripts/verify.sh
+```text
+┌────────────────┐       ┌──────────────┐       ┌─────────────────────────────────────┐
+│ localhost:3000 │  ───> │  Setu Agent  │  ───> │ https://myapp.setu.helios-logic.com │
+└────────────────┘       └──────────────┘       └─────────────────────────────────────┘
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Authenticate
-
 ```bash
-setu login
+curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
 ```
 
-### 2. Expose a local port
-
 ```bash
-setu expose 3000 --subdomain myapp
-```
-
-#### Host Header Overrides (for Vite, Webpack, Next.js)
-
-If your local server rejects requests with an "Invalid Host Header" error, you can rewrite it to match the local target using `--host-header`:
-
-```bash
-# Rewrite Host header to match target (e.g., localhost:3000)
-setu expose 3000 --subdomain myapp --host-header rewrite
-
-# Or override it to a specific value
-setu expose 3000 --subdomain myapp --host-header my-custom-host.local:3000
-```
-
-#### Tunneling to Local HTTPS Endpoints
-
-If your local server runs on HTTPS/TLS (even with self-signed certificates), you can specify the `https://` scheme and use `--insecure-skip-verify` to bypass certificate verification:
-
-```bash
-setu expose https://localhost:3000 --subdomain myapp --insecure-skip-verify
-```
-
-#### Edge Protection (Basic Auth)
-
-To protect your exposed local server from unauthorized public users or automated web scanners, you can enable HTTP Basic Authentication at the Gateway edge using the `--auth` flag:
-
-```bash
-# Challenge visitors with a username and password before allowing access
-setu expose 3000 --subdomain myapp --auth "admin:mypassword123"
-```
-
-#### Layer-4 Raw TCP Tunneling
-
-To expose raw TCP-based applications (like PostgreSQL, MySQL, SSH, or custom game servers) without parsing or terminating the application layer protocol, use the `--tcp` flag. The gateway dynamically allocates a high-port for your tunnel:
-
-```bash
-# Expose a local PostgreSQL database (port 5432)
-setu expose 5432 --subdomain mydb --tcp
-```
-
-The CLI will print the allocated public address (e.g. `setu.helios-logic.com:32145 -> localhost:5432`) which you can use directly with database clients.
-
-### 3. Or use the visual setup panel
-
-```bash
-setu setup
-```
-
-Opens a local web UI to manage API keys, claim subdomains, and configure port mappings.
-
-### 4. Start all configured tunnels
-
-```bash
-setu start
+setu expose 3000
 ```
 
 ---
 
-## Local HTTP Request/Response Inspection UI
+## Features
 
-When active tunnels are running (either via `setu expose` or `setu start`), a local HTTP inspection server will run in the background (defaulting to port `4500` or incrementing if bound).
-
-Open your browser to:
-👉 **[http://localhost:4500/inspect](http://localhost:4500/inspect)**
-
-From this dashboard, you can:
-*   **Inspect Traffic**: Visually inspect all incoming HTTP payloads, headers, cookies, and response status codes in real time as they proxy down the tunnel.
-*   **1-Click Webhook Replay**: Instantly clone and replay any captured HTTP request or webhook payload back to your local application port with a single click. This eliminates the need to manually trigger developer portals (like Stripe, GitHub, or Twilio) while debugging.
+* **HTTP & TCP Tunneling**: Expose local web applications, HTTPS targets, or raw TCP sockets (databases, SSH).
+* **Traffic Inspector UI**: View HTTP request/response payloads in real time and replay webhooks locally at `http://localhost:4500/inspect`.
+* **Edge Authentication**: Guard public URLs with HTTP Basic Authentication before traffic reaches your machine.
+* **Self-Hostable Gateway**: Deploy your own tunneling cluster on a VPS with Docker Compose, dynamic Traefik routing, and wildcard TLS.
 
 ---
 
-## Multi-Tunneling & Visual Configuration (`setup` & `start`)
+## Why Setu?
 
-For complex applications (like microservices or project structures with both a frontend and backend), running individual `setu expose` commands can become cumbersome. Setu provides a visual setup panel and a multi-tunnel starter to simplify this.
-
-### 1. Visual Configuration via `setu setup`
-
-Run the following command to start a local configuration web UI:
-
-```bash
-setu setup
-```
-
-This launches a beautiful, local web interface in your browser (usually at `http://localhost:4500`). In this interface, you can:
-*   **Manage API Keys**: Save your account credentials locally.
-*   **Map Ports to Subdomains**: Graphically assign local ports (e.g. `3000` or `8080`) to your claimed subdomains (e.g. `jhon-cena`).
-*   **Save and Exit**: Once you click the "Save and Exit" button, your configurations are stored securely in `~/.setu/config.json`, the local server is cleanly shut down, and your terminal control is returned.
-
-### 2. Run All Tunnels Concurrently via `setu start`
-
-Once configured, you can launch all of your tunnels at once using a single command:
-
-```bash
-setu start
-```
-
-This reads your saved mappings from `~/.setu/config.json` and runs all tunnel processes concurrently in the background, outputting unified traffic logs directly to your terminal screen.
+Most tunneling tools charge high subscription fees for custom subdomains, wildcard certificates, and stable TCP ports. Setu provides a developer experience on par with commercial tools, while remaining fully open-source and easy to self-host on your own infrastructure.
 
 ---
 
-## Updating
+## How It Works
 
-```bash
-setu update
-```
-
-Setu fetches the latest release from GitHub, verifies the SHA256 checksum, and atomically replaces itself — with automatic rollback if anything goes wrong.
+1. **Start Server**: Launch your application locally on any port.
+2. **Run CLI**: Start the agent using `setu expose <port>`.
+3. **Connect Tunnel**: The agent opens a secure, multiplexed WebSocket connection to the gateway.
+4. **Get URL**: The gateway routes incoming public requests to your local application.
 
 ---
 
-## Diagnostics
+## Use Cases
 
-```bash
-setu doctor
-```
+* **Webhook Testing**: Inspect and replay Stripe, GitHub, or Dodo Payments webhook payloads locally.
+* **Client Demos**: Share a live public link to your work-in-progress codebase.
+* **Mobile Development**: Connect physical devices directly to your local backend API.
+* **OAuth Integrations**: Test third-party authentication flows that require valid redirect URLs.
 
-Output includes:
+---
+
+## Architecture
 
 ```text
-⚕  Setu Doctor
-──────────────────────────────────────
-  Version:          v1.2.0
-  Commit:           abc1234
-  Build Date:       2024-06-01T12:00:00Z
-  OS:               darwin
-  Architecture:     arm64
-  Executable Path:  /usr/local/bin/setu
-──────────────────────────────────────
-  GitHub API:       ✔ reachable
-  Update Available: ✔ up to date
-──────────────────────────────────────
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│ Client/Browser  │ ────> │  Setu Gateway   │ ────> │   Setu Agent    │ ───> Local App (Port 3000)
+│ (Public Web)    │       │ (Public Server) │       │ (Local Machine) │
+└─────────────────┘       └─────────────────┘       └─────────────────┘
+                                   ▲                         │
+                                   └────── Secure Tunnel ────┘
 ```
 
 ---
 
-## Version
+## Try It Now
+
+Expose your first local server in seconds:
 
 ```bash
-setu version
-```
+# Install Setu CLI
+curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
 
-```text
-Setu CLI
-  Version:    v1.2.0
-  Commit:     abc1234
-  Build Date: 2024-06-01T12:00:00Z
+# Expose a local port
+setu expose 3000
 ```
 
 ---
 
-## All Commands
-
-| Command                              | Description                                    |
-|--------------------------------------|------------------------------------------------|
-| `setu login`                         | Save API key credentials                       |
-| `setu logout`                        | Remove saved credentials                       |
-| `setu expose <port> --subdomain foo` | Expose a local port via a claimed subdomain    |
-| `setu start`                         | Start all tunnels from saved config            |
-| `setu setup`                         | Open the visual configuration panel            |
-| `setu status`                        | Show current config and auth status            |
-| `setu update`                        | Update setu to the latest GitHub release       |
-| `setu doctor`                        | Run system diagnostics                         |
-| `setu version`                       | Print version, commit, and build date          |
-
----
-
-## Configuration
-
-Setu stores its config at `~/.setu/config.json`.
-
-Environment variables:
-
-| Variable         | Description                        | Default            |
-|------------------|------------------------------------|--------------------|
-| `GITHUB_OWNER`   | GitHub repository owner            | `pranavwaikar`     |
-| `GITHUB_REPO`    | GitHub repository name             | `setu`             |
-| `API_SERVER_URL` | Override the API server URL        | inferred from config |
-
----
-
-## Self-Hosting
+<details>
+<summary><b>🛠️ Self-Hosting Guide</b></summary>
 
 You can run your own Setu gateway on any VPS. The stack is `docker-compose`-based and fronted by Traefik (managed via Coolify).
 
@@ -299,10 +142,7 @@ In your Cloudflare dashboard for `yourdomain.com`, add **two** A records:
 | A | `yourdomain.com` | `<your-server-IP>` | DNS only (grey cloud) |
 | A | `*` | `<your-server-IP>` | DNS only (grey cloud) |
 
-The `*` wildcard record covers all subdomains — including multi-level ones like `my-app.setu.yourdomain.com`. This is a Cloudflare-specific behaviour: Cloudflare's wildcard matches subdomains at any depth, whereas standard DNS wildcards only cover one level. Coolify and Traefik handle all routing from there.
-
-> [!WARNING]
-> Set both records to **"DNS only"** (grey cloud), not "Proxied" (orange cloud). Cloudflare's proxy intercepts WebSocket connections and will break tunnel sessions.
+The `*` wildcard record covers all subdomains. Set both records to **"DNS only"** (grey cloud), not "Proxied" (orange cloud). Cloudflare's proxy intercepts WebSocket connections and will break tunnel sessions.
 
 #### 3. Create a Cloudflare API Token
 
@@ -345,7 +185,7 @@ After editing, click **"Save"** then click the **"Restart Proxy"** button on the
 
 #### 5. Set the environment variables in your Coolify service
 
-Before deploying, configure these environment variables in your Coolify service settings. A template is available in [.env.example](file:///Users/pranavwaikar/Documents/GitHub/setu/.env.example) for reference.
+Before deploying, configure these environment variables in your Coolify service settings. Reference [.env.example](.env.example) for defaults.
 
 ##### Required Configuration
 
@@ -377,7 +217,6 @@ These are handled automatically by `docker-compose.yml`, but can be overridden:
 | `DODO_TEST_MODE` | `true` | Enable test mode sandbox environment for Dodo Payments |
 | `DODO_WEBHOOK_SECRET` | *(None)* | Webhook Secret Key for verifying signatures (required for secure production webhooks at `/api/payments/webhook`) |
 | `DODO_PRO_PRODUCT_ID` | `prod_pro_123` | Product ID created in Dodo Payments dashboard for the PRO tier upgrades |
-
 
 > [!IMPORTANT]
 > **Build-Time Compilation:** Because Next.js compiles the dashboard's domain configuration (`NEXT_PUBLIC_TUNNEL_DOMAIN` and `NEXT_PUBLIC_PUBLIC_DOMAIN`) into the client-side JavaScript bundle during the Docker build process, the `TUNNEL_DOMAIN` and `PUBLIC_DOMAIN` environment variables **must be defined before deploying or building the service in Coolify**.
@@ -439,7 +278,7 @@ curl https://setu.yourdomain.com/health
 # Expected: {"status":"ok"}
 ```
 
-**Wildcard TLS certificate** (run after ~60 seconds — Let's Encrypt issuance takes a moment):
+**Wildcard TLS certificate** (run after ~60 seconds):
 ```bash
 curl -v https://any-name.setu.yourdomain.com/health 2>&1 | grep "subject:"
 # Expected: subject: CN=*.setu.yourdomain.com
@@ -448,26 +287,70 @@ curl -v https://any-name.setu.yourdomain.com/health 2>&1 | grep "subject:"
 
 Once the wildcard cert is issued, all tunnel subdomains will show the green padlock 🔒 in browsers with no warnings.
 
----
-
 ### How the wildcard TLS works (background)
 
 Standard Let's Encrypt certificates are issued via **HTTP-01 challenge** — Let's Encrypt makes a request to your server to verify ownership. This only works for exact hostnames.
 
 Wildcard certificates (`*.setu.yourdomain.com`) require **DNS-01 challenge** — Let's Encrypt asks you to create a specific `_acme-challenge` TXT record in your DNS zone. Traefik uses the Cloudflare API token to create and delete this TXT record automatically. After validation, a single certificate covers every tunnel subdomain.
 
----
+</details>
 
-## Dodo Payments Integration
+<details>
+<summary><b>💻 CLI Reference & Configuration</b></summary>
 
-Setu integrates with [Dodo Payments](https://dodopayments.com/) to process Pro/Enterprise plan upgrades, handle recurring subscription payments, and manage webhook-driven subscription events (activations, failed payments, cancellations, and expirations).
+### Commands
+
+| Command | Description |
+|---|---|
+| `setu login` | Save API key credentials |
+| `setu logout` | Remove saved credentials |
+| `setu expose <port> --subdomain foo` | Expose a local port via a claimed subdomain |
+| `setu start` | Start all tunnels from saved config |
+| `setu setup` | Open the visual configuration panel |
+| `setu status` | Show current config and auth status |
+| `setu update` | Update setu to the latest GitHub release |
+| `setu doctor` | Run system diagnostics |
+| `setu version` | Print version, commit, and build date |
+
+### Visual Multi-Tunnel Configuration
+
+For complex applications (like microservices or project structures with both a frontend and backend), running individual `setu expose` commands can become cumbersome. Setu provides a visual setup panel and a multi-tunnel starter to simplify this.
+
+1. **Visual Configuration via `setu setup`**
+   Run the following command to start a local configuration web UI:
+   ```bash
+   setu setup
+   ```
+   This launches a local web interface in your browser (usually at `http://localhost:4500`). In this interface, you can manage API keys and graphically assign local ports (e.g. `3000` or `8080`) to your claimed subdomains. Once you click "Save and Exit", your configurations are stored in `~/.setu/config.json` and the CLI returns control to your terminal.
+
+2. **Run All Tunnels Concurrently via `setu start`**
+   Once configured, you can launch all of your tunnels at once using a single command:
+   ```bash
+   setu start
+   ```
+   This reads your saved mappings from `~/.setu/config.json` and runs all tunnel processes concurrently in the background.
+
+### Environment & Files
+
+Setu stores its configuration at `~/.setu/config.json`.
+
+| Variable | Description | Default |
+|---|---|---|
+| `GITHUB_OWNER` | GitHub repository owner | `pranavwaikar` |
+| `GITHUB_REPO` | GitHub repository name | `setu` |
+| `API_SERVER_URL` | Override the API server URL | inferred from config |
+
+</details>
+
+<details>
+<summary><b>💳 Dodo Payments Integration</b></summary>
+
+Setu integrates with [Dodo Payments](https://dodopayments.com/) to process Pro/Enterprise plan upgrades, handle recurring subscription payments, and manage webhook-driven subscription events.
 
 ### Setup Guide
 
-Follow these steps to configure subscription billing for your self-hosted instance:
-
 #### 1. Create a Dodo Payments Account
-Sign up on the [Dodo Payments Dashboard](https://test.dodopayments.com/ or https://dodopayments.com/).
+Sign up on the [Dodo Payments Dashboard](https://dodopayments.com/).
 
 #### 2. Create a Subscription Product
 1. In the Dodo Payments dashboard, navigate to **Products**.
@@ -475,7 +358,7 @@ Sign up on the [Dodo Payments Dashboard](https://test.dodopayments.com/ or https
 3. Set your product details:
    - **Name**: `Setu Pro`
    - **Billing Type**: `Subscription / Recurring`
-   - **Price**: `$5.00 USD` (or your preferred price) per month
+   - **Price**: `$5.00 USD` per month
 4. Copy the generated **Product ID** (e.g., `prod_pro_123`). This will be set as `DODO_PRO_PRODUCT_ID`.
 
 #### 3. Retrieve your API Key
@@ -493,36 +376,38 @@ Webhooks are essential to process subscription states (upgrades, failures, cance
    ```
    *(Replace `yourdomain.com` with your Setu public domain).*
 4. Select the following **Webhook Events**:
-   - `checkout.completed` (handles initial checkout completion)
-   - `subscription.active` (handles subscription activation)
-   - `payment.succeeded` (handles recurring payment successes)
-   - `payment.failed` (handles failed billing attempts)
-   - `subscription.failed` (handles failed subscription renewals)
-   - `subscription.cancelled` (handles subscription cancellations)
-   - `subscription.expired` (handles subscription expirations)
+   - `checkout.completed`
+   - `subscription.active`
+   - `payment.succeeded`
+   - `payment.failed`
+   - `subscription.failed`
+   - `subscription.cancelled`
+   - `subscription.expired`
 5. Save the Webhook.
 6. Copy the **Webhook Signing Secret** (starts with `whsec_`). This will be set as `DODO_WEBHOOK_SECRET` to enable signature verification on all incoming webhooks.
 
----
+</details>
 
-## Admin Panel (AdminJS)
+<details>
+<summary><b>🔒 Admin Panel & Maintenance</b></summary>
+
+### Admin Panel (AdminJS)
 
 Setu features a built-in admin dashboard using [AdminJS](https://github.com/SoftwareBrothers/adminjs) to manage database models directly.
 
-### Accessing the Panel
+#### Accessing the Panel
 The admin panel is securely reverse-proxied by the gateway and is accessible at:
 `https://<your-public-domain>/admin-panel` (or `http://localhost:3000/admin-panel` when running locally).
 
-### Configuration
+#### Configuration
 Access to the admin panel is protected by Basic Authentication. You can customize the credentials using the following environment variables:
-
 - `ADMIN_EMAIL`: The admin user login email address (defaults to `admin@setu.com`).
 - `ADMIN_PASSWORD`: The admin user login password (defaults to `adminpassword123`).
 - `ADMIN_COOKIE_PASSWORD`: Secret encryption key used to sign session cookies (defaults to `sessionsecretcookiekey1234567890`, must be at least 32 characters long).
 
 ---
 
-## Building from Source
+### Building from Source
 
 ```bash
 git clone https://github.com/pranavwaikar/setu.git
@@ -533,7 +418,7 @@ make build
 
 ---
 
-## Release Process
+### Release Process
 
 Releases are fully automated via GitHub Actions + GoReleaser:
 
@@ -549,11 +434,11 @@ This will:
 
 ---
 
-## Uninstalling
+### Uninstalling
 
 If you need to uninstall Setu CLI, run the following commands:
 
-### Linux / macOS
+#### Linux / macOS
 ```bash
 # Remove the binary
 sudo rm -f /usr/local/bin/setu
@@ -562,7 +447,7 @@ sudo rm -f /usr/local/bin/setu
 rm -rf ~/.setu
 ```
 
-### Windows (PowerShell)
+#### Windows (PowerShell)
 ```powershell
 # Remove the binary and install folder
 Remove-Item -Recurse -Force "$env:LOCALAPPDATA\setu"
@@ -570,6 +455,8 @@ Remove-Item -Recurse -Force "$env:LOCALAPPDATA\setu"
 # Remove local configuration & databases
 Remove-Item -Recurse -Force "$env:USERPROFILE\.setu"
 ```
+
+</details>
 
 ---
 
