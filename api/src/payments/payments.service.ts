@@ -175,11 +175,12 @@ export class PaymentsService {
 
     const resend = new Resend(resendApiKey);
     const fromAddress = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+    const fromField = fromAddress.includes('<') ? fromAddress : `Setu Billing <${fromAddress}>`;
     const amountFormatted = (amount / 100).toFixed(2);
 
     try {
       const response = await resend.emails.send({
-        from: `Setu Billing <${fromAddress}>`,
+        from: fromField,
         to: email,
         subject: `Payment Receipt: Upgrade to Setu ${plan}`,
         html: `
