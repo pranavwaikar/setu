@@ -178,7 +178,7 @@ export class PaymentsService {
     const amountFormatted = (amount / 100).toFixed(2);
 
     try {
-      await resend.emails.send({
+      const response = await resend.emails.send({
         from: `Setu Billing <${fromAddress}>`,
         to: email,
         subject: `Payment Receipt: Upgrade to Setu ${plan}`,
@@ -216,9 +216,13 @@ export class PaymentsService {
           </div>
         `,
       });
-      console.log(`[Email Success] Purchase receipt email dispatched to ${email}.`);
+      if (response.error) {
+        console.error('Failed to send purchase email via Resend API response error:', response.error);
+      } else {
+        console.log(`[Email Success] Purchase receipt email dispatched to ${email}. Response data:`, response.data);
+      }
     } catch (err) {
-      console.error('Failed to send purchase email via Resend:', err);
+      console.error('Failed to send purchase email via Resend exception:', err);
     }
   }
 }

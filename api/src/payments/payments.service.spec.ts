@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BadRequestException } from '@nestjs/common';
 
 // Mock Resend dependency
-const mockSend = jest.fn().mockResolvedValue({ id: 'mock-email-id' });
+const mockSend = jest.fn().mockResolvedValue({ data: { id: 'mock-email-id' }, error: null });
 jest.mock('resend', () => {
   return {
     Resend: jest.fn().mockImplementation(() => {
