@@ -77,6 +77,7 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('status') === 'success') {
         showSuccess('Payment successful! Your account has been upgraded to PRO.');
+        checkAuth();
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 

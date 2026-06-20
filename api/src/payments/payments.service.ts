@@ -18,25 +18,12 @@ export class PaymentsService {
       throw new BadRequestException('User not found');
     }
 
-    const dodoApiKey = process.env.DODO_API_KEY || 'dp_test_placeholder_key';
-    const isTestMode = process.env.DODO_TEST_MODE !== 'false';
-    
-    // Check if the API key is a dummy/placeholder key
-    const isDummyKey = dodoApiKey === 'dp_test_placeholder_key' || dodoApiKey.includes('placeholder') || dodoApiKey.length < 15;
-
-    const returnTestMode = isTestMode || isDummyKey;
-
-    if (isDummyKey) {
-      // Return local mock checkout URL for testing/simulation
-      const publicDomain = process.env.PUBLIC_DOMAIN || 'http://localhost:3000';
-      return {
-        checkoutUrl: `${publicDomain}/payments/mock-checkout?userId=${userId}&email=${encodeURIComponent(user.email)}&testMode=true&plan=PRO`,
-        isMock: true,
-        isTestMode: true,
-      };
+    const dodoApiKey = process.env.DODO_API_KEY;
+    if (!dodoApiKey || dodoApiKey === 'dp_test_placeholder_key' || dodoApiKey.includes('placeholder')) {
+      throw new BadRequestException('Dodo Payments is not configured. Please set a valid DODO_API_KEY.');
     }
 
-    // Call real Dodo Payments API using official TypeScript SDK
+    const isTestMode = process.env.DODO_TEST_MODE !== 'false';
     const productId = process.env.DODO_PRO_PRODUCT_ID || 'prod_pro_123';
     const publicDomain = process.env.PUBLIC_DOMAIN || 'http://localhost:3000';
 
@@ -67,17 +54,11 @@ export class PaymentsService {
       return {
         checkoutUrl: session.checkout_url,
         isMock: false,
-        isTestMode: returnTestMode,
+        isTestMode,
       };
     } catch (err: any) {
       console.error('Failed calling Dodo Payments API:', err);
-      // Fail gracefully to mock checkout so developers aren't blocked by network/key issues
-      const publicDomain = process.env.PUBLIC_DOMAIN || 'http://localhost:3000';
-      return {
-        checkoutUrl: `${publicDomain}/payments/mock-checkout?userId=${userId}&email=${encodeURIComponent(user.email)}&testMode=true&plan=PRO`,
-        isMock: true,
-        isTestMode: true,
-      };
+      throw new BadRequestException(`Failed to generate Dodo Payments checkout session: ${err.message || err}`);
     }
   }
 
