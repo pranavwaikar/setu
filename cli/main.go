@@ -504,6 +504,9 @@ var (
 )
 
 func runSetupServer(cfg *Config) {
+	// Start inspect server as well
+	inspectPort := startInspectServer()
+
 	// Stop all active tunnels on shutdown
 	defer func() {
 		activeTunnelsMu.Lock()
@@ -535,6 +538,9 @@ func runSetupServer(cfg *Config) {
 	fmt.Printf(" --------------------------------------------------\n")
 	fmt.Printf(" Server:      %s\n", localURL)
 	fmt.Printf(" Config Path: %s\n", getConfigPath())
+	if inspectPort > 0 {
+		fmt.Printf(" Inspect UI:  http://127.0.0.1:%d/inspect\n", inspectPort)
+	}
 	fmt.Printf(" --------------------------------------------------\n")
 	fmt.Printf(" Opening browser... Press Ctrl+C in terminal to stop setup server.\n\n")
 
@@ -881,6 +887,16 @@ func runSetupServer(cfg *Config) {
 	})
 
 	// Share inspect ws and replay endpoints in setup-panel as well
+	mux.HandleFunc("/inspect", func(w http.ResponseWriter, r *http.Request) {
+		data, err := subFS.Open("inspect.html")
+		if err != nil {
+			http.Error(w, "Failed to load inspect page", http.StatusInternalServerError)
+			return
+		}
+		defer data.Close()
+		w.Header().Set("Content-Type", "text/html")
+		io.Copy(w, data)
+	})
 	mux.HandleFunc("/inspect/ws", handleInspectWS)
 	mux.HandleFunc("/inspect/replay", handleInspectReplay)
 	mux.HandleFunc("/inspect/subdomains", handleInspectSubdomains)

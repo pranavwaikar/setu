@@ -55,7 +55,9 @@ latest_tag() {
 main() {
   need_cmd curl
   need_cmd tar
-  need_cmd sha256sum || need_cmd shasum  # macOS uses shasum
+  if ! command -v sha256sum &>/dev/null && ! command -v shasum &>/dev/null; then
+    err "Neither sha256sum nor shasum found — please install one of them."
+  fi
 
   OS=$(detect_os)
   ARCH=$(detect_arch)
@@ -87,15 +89,21 @@ main() {
 
   if [ -f "${TMP_DIR}/checksums.txt" ]; then
     cd "$TMP_DIR"
+    EXPECTED=$(grep "${ARCHIVE}" checksums.txt | awk '{print $1}')
+    if [ -z "$EXPECTED" ]; then
+      err "Checksum not found in checksums.txt — aborting installation."
+    fi
+
     if command -v sha256sum &>/dev/null; then
-      grep "${ARCHIVE}" checksums.txt | sha256sum --check --status \
-        || err "Checksum verification FAILED — aborting installation."
-    else
-      # macOS / BSD
-      EXPECTED=$(grep "${ARCHIVE}" checksums.txt | awk '{print $1}')
+      ACTUAL=$(sha256sum "${ARCHIVE}" | awk '{print $1}')
+    elif command -v shasum &>/dev/null; then
       ACTUAL=$(shasum -a 256 "${ARCHIVE}" | awk '{print $1}')
-      [ "$EXPECTED" = "$ACTUAL" ] \
-        || err "Checksum verification FAILED — aborting installation."
+    else
+      err "Neither sha256sum nor shasum found — aborting installation."
+    fi
+
+    if [ "$EXPECTED" != "$ACTUAL" ]; then
+      err "Checksum verification FAILED — aborting installation."
     fi
     ok "Checksum verified."
     cd - >/dev/null

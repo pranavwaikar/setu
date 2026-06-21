@@ -300,6 +300,10 @@ function renderSubdomains() {
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                         Traffic
                     </button>
+                    <button class="btn-toggle-traffic" onclick="openInspector()" title="Open Inspector in new tab" style="height: 38px; display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        Open Inspector
+                    </button>
                     <button class="btn-danger" onclick="releaseSubdomain('${sub.id}', '${sub.hostname}')" style="height: 38px; display: inline-flex; align-items: center;" ${isOnline ? 'disabled' : ''}>Release</button>
                 </div>
             </div>
@@ -926,4 +930,8 @@ async function saveAndExit() {
         showToast("Failed to save configuration before exiting", "error");
         isShuttingDown = false;
     }
+}
+
+function openInspector() {
+    window.open('/inspect', '_blank');
 }

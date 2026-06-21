@@ -408,6 +408,141 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.2);
         }
+
+        /* Modal styling */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(9, 9, 11, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal.show {
+            opacity: 1;
+            pointer-events: auto;
+            display: flex !important;
+        }
+
+        .modal-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-muted);
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 650px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+            transform: scale(0.95);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .btn-close-modal {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .btn-close-modal:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-muted);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .modal-footer {
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--border-muted);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-muted);
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
     </style>
 </head>
 <body>
@@ -459,6 +594,7 @@
                     <div style="display: flex; gap: 0.5rem; flex-shrink: 0; align-items: center;">
                         <button class="btn-clear" id="btn-copy-curl" onclick="copyInspectCurl()" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 0.35rem; height: auto;">Copy cURL</button>
                         <button class="btn-primary" id="btn-replay" onclick="replayRequest()">Replay Request</button>
+                        <button class="btn-clear" id="btn-edit-replay" onclick="openEditModal()" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 0.35rem; height: auto;">Edit & Replay</button>
                     </div>
                 </div>
 
@@ -488,6 +624,49 @@
                     <div class="section-title">Response Body</div>
                     <div id="resp-body-content" class="payload-container"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT & REPLAY MODAL -->
+    <div id="edit-replay-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit & Replay Request</h3>
+                <button class="btn-close-modal" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-tx-id">
+                <div class="form-group grid-2">
+                    <div>
+                        <label class="form-label" for="edit-method">Method</label>
+                        <select id="edit-method" class="form-input">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="OPTIONS">OPTIONS</option>
+                            <option value="HEAD">HEAD</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="edit-path">Path</label>
+                        <input type="text" id="edit-path" class="form-input" placeholder="/api/v1/resource">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="edit-headers">Headers (JSON Array per key)</label>
+                    <textarea id="edit-headers" class="form-textarea" placeholder='{"Content-Type": ["application/json"], "X-Custom": ["value"]}' style="height: 90px; font-family: monospace;"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="edit-body">Body Payload</label>
+                    <textarea id="edit-body" class="form-textarea" placeholder="Request body payload..." style="height: 150px; font-family: monospace;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-clear" onclick="closeEditModal()" style="padding: 0.5rem 1rem;">Cancel</button>
+                <button id="btn-send-custom-replay" class="btn-primary" onclick="sendCustomReplay()" style="padding: 0.5rem 1.25rem;">Send Request</button>
             </div>
         </div>
     </div>
@@ -781,6 +960,82 @@
             }).catch(err => {
                 showToast("Failed to copy curl to clipboard", true);
             });
+        }
+
+        function openEditModal() {
+            if (!selectedTxId) return;
+            const tx = transactions.find(t => t.id === selectedTxId);
+            if (!tx) return;
+
+            document.getElementById('edit-tx-id').value = selectedTxId;
+            document.getElementById('edit-method').value = tx.method;
+            document.getElementById('edit-path').value = tx.path;
+            
+            // Headers JSON
+            document.getElementById('edit-headers').value = JSON.stringify(tx.req_headers || {}, null, 2);
+            // Body
+            document.getElementById('edit-body').value = tx.req_body || '';
+
+            const modal = document.getElementById('edit-replay-modal');
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('edit-replay-modal');
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+        }
+
+        async function sendCustomReplay() {
+            const txId = document.getElementById('edit-tx-id').value;
+            const method = document.getElementById('edit-method').value;
+            const path = document.getElementById('edit-path').value.trim();
+            const headersRaw = document.getElementById('edit-headers').value.trim();
+            const body = document.getElementById('edit-body').value;
+
+            let headers = {};
+            if (headersRaw) {
+                try {
+                    headers = JSON.parse(headersRaw);
+                } catch (e) {
+                    showToast("Invalid JSON format in Headers field", true);
+                    return;
+                }
+            }
+
+            const payload = {
+                id: txId,
+                method: method,
+                path: path,
+                req_headers: headers,
+                req_body: body
+            };
+
+            const btn = document.getElementById('btn-send-custom-replay');
+            const originalText = btn.innerText;
+            btn.innerText = 'Sending...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/inspect/replay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showToast('Custom request sent successfully!');
+                    closeEditModal();
+                } else {
+                    showToast(`Replay failed: ${result.error || response.statusText}`, true);
+                }
+            } catch (err) {
+                showToast(`Replay error: ${err.message}`, true);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         }
 
         window.onload = () => {
