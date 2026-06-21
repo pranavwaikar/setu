@@ -1207,102 +1207,95 @@ export default function Home() {
 
                   <hr className="border-zinc-900" />
 
-                  {/* Step 2: Login */}
+                  {/* Step 2: Configuration Options */}
                   <div className="flex gap-4 items-start">
                     <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
                       2
                     </div>
-                    <div className="space-y-2 flex-1">
-                      <h4 className="text-sm font-semibold text-zinc-200">Authenticate your Client</h4>
+                    <div className="space-y-4 flex-1">
+                      <h4 className="text-sm font-semibold text-zinc-200">Configure and Expose Services</h4>
                       <p className="text-xs text-muted-foreground">
-                        Connect the CLI tool to your Setu account using your private API Key.
+                        Choose between a visual setup server or raw CLI commands to configure your tunnels.
                       </p>
-                      <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
-                        <span className="font-mono text-xs text-zinc-300 select-all">
-                          setu login
-                        </span>
-                        <button
-                          onClick={() => handleCopy('setu login', 'cli-login')}
-                          className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
-                        >
-                          {copiedText === 'cli-login' ? 'Copied' : 'Copy'}
-                        </button>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                        {/* Option A: Visual Setup */}
+                        <div className="space-y-4 p-5 rounded-xl bg-zinc-950/20 border border-zinc-900/60 relative">
+                          <h5 className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                            Option A: Visual Setup (Recommended)
+                          </h5>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            Launch a local, interactive browser-based panel to manage subdomains, API keys, and port mappings:
+                          </p>
+                          <div className="flex gap-2 bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
+                            <span className="font-mono text-xs text-zinc-300 select-all">
+                              setu setup
+                            </span>
+                            <button
+                              onClick={() => handleCopy('setu setup', 'cli-setup')}
+                              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
+                            >
+                              {copiedText === 'cli-setup' ? 'Copied' : 'Copy'}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-zinc-500">
+                            Runs a local panel at <code className="text-zinc-400">http://localhost:4500</code>.
+                          </p>
+                        </div>
+
+                        {/* Option B: CLI Setup */}
+                        <div className="space-y-4 p-5 rounded-xl bg-zinc-950/20 border border-zinc-900/60">
+                          <h5 className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                            Option B: CLI-Only Setup
+                          </h5>
+
+                          <div className="space-y-3">
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">1. Authenticate</p>
+                              <div className="flex gap-2 bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
+                                <span className="font-mono text-xs text-zinc-300 select-all">
+                                  setu login
+                                </span>
+                                <button
+                                  onClick={() => handleCopy('setu login', 'cli-login')}
+                                  className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
+                                >
+                                  {copiedText === 'cli-login' ? 'Copied' : 'Copy'}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">2. Expose Port</p>
+                              <div className="flex gap-2 bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
+                                <span className="font-mono text-xs text-zinc-300 select-all">
+                                  setu expose 3000 --subdomain {subdomains[0]?.hostname || '<subdomain>'}
+                                </span>
+                                <button
+                                  onClick={() => handleCopy(`setu expose 3000 --subdomain ${subdomains[0]?.hostname || '<subdomain>'}`, 'cli-expose')}
+                                  className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
+                                >
+                                  {copiedText === 'cli-expose' ? 'Copied' : 'Copy'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-zinc-500 italic">
-                        Note: Copy your API Key from the <strong>API Keys</strong> tab when prompted.
-                      </p>
                     </div>
                   </div>
 
                   <hr className="border-zinc-900" />
 
-                  {/* Step 3: Expose */}
+                  {/* Step 3: Start */}
                   <div className="flex gap-4 items-start">
                     <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
                       3
                     </div>
                     <div className="space-y-2 flex-1">
-                      <h4 className="text-sm font-semibold text-zinc-200">Expose Local Service</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Expose a port of your choice using one of your claimed subdomains:
-                      </p>
-                      <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
-                        <span className="font-mono text-xs text-zinc-300 select-all">
-                          setu expose 3000 --subdomain {subdomains[0]?.hostname || '<subdomain>'}
-                        </span>
-                        <button
-                          onClick={() => handleCopy(`setu expose 3000 --subdomain ${subdomains[0]?.hostname || '<subdomain>'}`, 'cli-expose')}
-                          className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
-                        >
-                          {copiedText === 'cli-expose' ? 'Copied' : 'Copy'}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-zinc-500">
-                        Replace `3000` with the local port of your application. Make sure the subdomain is claimed in the **Subdomains** tab.
-                      </p>
-                    </div>
-                  </div>
-
-                  <hr className="border-zinc-900" />
-
-                  {/* Step 4: Setup */}
-                  <div className="flex gap-4 items-start">
-                    <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
-                      4
-                    </div>
-                    <div className="space-y-2 flex-1">
-                      <h4 className="text-sm font-semibold text-zinc-200">Visual Setup Panel</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Launch a local browser-based configuration panel to manage settings visually:
-                      </p>
-                      <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
-                        <span className="font-mono text-xs text-zinc-300 select-all">
-                          setu setup
-                        </span>
-                        <button
-                          onClick={() => handleCopy('setu setup', 'cli-setup')}
-                          className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
-                        >
-                          {copiedText === 'cli-setup' ? 'Copied' : 'Copy'}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-zinc-500">
-                        Launches a local web UI at `http://localhost:4500` to configure subdomains, port mappings, and securely save mappings.
-                      </p>
-                    </div>
-                  </div>
-
-                  <hr className="border-zinc-900" />
-
-                  {/* Step 5: Start */}
-                  <div className="flex gap-4 items-start">
-                    <div className="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 font-bold text-xs flex items-center justify-center border border-purple-500/20 shrink-0 mt-0.5">
-                      5
-                    </div>
-                    <div className="space-y-2 flex-1">
                       <h4 className="text-sm font-semibold text-zinc-200">Start Configured Tunnels</h4>
                       <p className="text-xs text-muted-foreground">
-                        Run all saved tunnels simultaneously in a single terminal process:
+                        Run all of your saved tunnel configurations concurrently in a single terminal process:
                       </p>
                       <div className="flex gap-2 max-w-xl bg-zinc-950 p-2.5 rounded-lg border border-zinc-900 items-center justify-between">
                         <span className="font-mono text-xs text-zinc-300 select-all">
@@ -1316,7 +1309,7 @@ export default function Home() {
                         </button>
                       </div>
                       <p className="text-[10px] text-zinc-500">
-                        Launches all active tunnel processes defined in your local configuration concurrently.
+                        Loads saved mappings from <code className="text-zinc-400">~/.setu/config.json</code> and connects all tunnels concurrently.
                       </p>
                     </div>
                   </div>
