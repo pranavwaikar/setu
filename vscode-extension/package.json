@@ -1,0 +1,142 @@
+{
+  "name": "setu",
+  "displayName": "Setu Tunnels",
+  "description": "Expose local servers to the internet with secure public URLs, manage tunnels, and inspect HTTP/TCP traffic directly in VS Code.",
+  "version": "0.1.0",
+  "publisher": "pranavwaikar",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "setu-tunnels-container",
+          "title": "Setu Tunnels",
+          "icon": "media/icon.png"
+        }
+      ]
+    },
+    "views": {
+      "setu-tunnels-container": [
+        {
+          "id": "setu-tunnels-view",
+          "name": "Active Tunnels",
+          "icon": "media/icon.png"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "setu.startTunnel",
+        "title": "Setu: Start Tunnel",
+        "icon": "$(play)"
+      },
+      {
+        "command": "setu.stopTunnel",
+        "title": "Setu: Stop Tunnel",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "setu.openInspector",
+        "title": "Setu: Open Traffic Inspector"
+      },
+      {
+        "command": "setu.exposeWorkspace",
+        "title": "Setu: Expose Active Port"
+      },
+      {
+        "command": "setu.refreshTunnels",
+        "title": "Setu: Refresh Tunnels List",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "setu.login",
+        "title": "Setu: Login to Account",
+        "icon": "$(key)"
+      },
+      {
+        "command": "setu.logout",
+        "title": "Setu: Logout",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "setu.addMapping",
+        "title": "Setu: Add Port Mapping",
+        "icon": "$(add)"
+      },
+      {
+        "command": "setu.editMapping",
+        "title": "Setu: Edit Port Mapping",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "setu.deleteMapping",
+        "title": "Setu: Delete Port Mapping",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "setu.addMapping",
+          "when": "view == setu-tunnels-view && setu.isLoggedIn",
+          "group": "navigation@1"
+        },
+        {
+          "command": "setu.login",
+          "when": "view == setu-tunnels-view && !setu.isLoggedIn",
+          "group": "navigation@2"
+        },
+        {
+          "command": "setu.logout",
+          "when": "view == setu-tunnels-view && setu.isLoggedIn",
+          "group": "navigation@3"
+        },
+        {
+          "command": "setu.refreshTunnels",
+          "when": "view == setu-tunnels-view && setu.isLoggedIn",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "setu.startTunnel",
+          "when": "view == setu-tunnels-view && viewItem == disconnected",
+          "group": "inline"
+        },
+        {
+          "command": "setu.stopTunnel",
+          "when": "view == setu-tunnels-view && viewItem == connected",
+          "group": "inline"
+        },
+        {
+          "command": "setu.editMapping",
+          "when": "view == setu-tunnels-view && viewItem != placeholder",
+          "group": "inline"
+        },
+        {
+          "command": "setu.deleteMapping",
+          "when": "view == setu-tunnels-view && viewItem != placeholder",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^18.17.0",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.1.6"
+  }
+}

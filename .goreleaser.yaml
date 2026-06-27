@@ -51,6 +51,8 @@ release:
   draft: false
   prerelease: auto
   name_template: "Setu {{.Tag}}"
+  extra_files:
+    - glob: vscode-extension/*.vsix
   header: |
     ## Setu {{.Tag}}
 

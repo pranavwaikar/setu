@@ -1512,6 +1512,14 @@ func handleInspectWS(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleInspectReplay(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -1662,6 +1670,14 @@ func handleInspectReplay(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleInspectSubdomains(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	c, err := loadConfig()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

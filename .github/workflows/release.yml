@@ -31,6 +31,38 @@ jobs:
         working-directory: cli
         run: go test ./...
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install Extension Dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Sync Extension Version with Git Tag
+        working-directory: vscode-extension
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "Syncing package.json version to: $TAG_VERSION"
+          npm version "$TAG_VERSION" --no-git-tag-version
+
+      - name: Package Extension
+        working-directory: vscode-extension
+        run: npx @vscode/vsce package --no-git-tag-version
+
+      - name: Publish Extension to VS Code Marketplace
+        if: ${{ secrets.VSCE_PAT != '' }}
+        working-directory: vscode-extension
+        run: npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }} --no-git-tag-version
+
+      - name: Publish Extension to Open VSX Registry
+        if: ${{ secrets.OVSX_PAT != '' }}
+        working-directory: vscode-extension
+        run: npx ovsx publish -p ${{ secrets.OVSX_PAT }} --no-git-tag-version
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
