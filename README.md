@@ -16,10 +16,6 @@
 
 </div>
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash && setu expose 3000
-```
-
 ```text
 ┌────────────────┐       ┌──────────────┐       ┌─────────────────────────────────────┐
 │ localhost:3000 │  ───> │  Setu Agent  │  ───> │ https://myapp.setu.helios-logic.com │
@@ -30,28 +26,80 @@ curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/inst
 
 ## Quick Start
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
-```
+Get your local server on the public internet in seconds:
 
 ```bash
+# 1. Install Setu CLI (macOS / Linux)
+curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
+
+# 2. Expose your port
 setu expose 3000
 ```
 
 ---
 
-## Features
+## Setu vs. ngrok & Alternatives
 
-* **HTTP & TCP Tunneling**: Expose local web applications, HTTPS targets, or raw TCP sockets (databases, SSH).
-* **Traffic Inspector UI**: View HTTP request/response payloads in real time and replay webhooks locally at `http://localhost:4500/inspect`.
-* **Edge Authentication**: Guard public URLs with HTTP Basic Authentication before traffic reaches your machine.
-* **Self-Hostable Gateway**: Deploy your own tunneling cluster on a VPS with Docker Compose, dynamic Traefik routing, and wildcard TLS.
+| Feature | **Setu** | **ngrok** | **Cloudflare Tunnel** | **LocalTunnel** |
+| :--- | :---: | :---: | :---: | :---: |
+| **Open Source** | ✅ (AGPL-3.0) | ❌ (Proprietary) | ⚠️ (Apache-2.0 Client only) | ✅ (MIT) |
+| **Self-Hostable** | ✅ (Docker / Coolify) | ❌ | ❌ | ✅ |
+| **Local Traffic Inspector** | ✅ (Port 4500 with Replay) | ✅ (Port 4040 with Replay) | ❌ | ❌ |
+| **Visual Config Interface** | ✅ (`setu setup` UI) | ❌ | ❌ | ❌ |
+| **Multi-Tunnel Command** | ✅ (`setu start`) | ✅ (via YAML) | ✅ (via YAML) | ❌ |
+| **Dashboard UI** | ✅ (Claim subdomains & keys) | ✅ (SaaS Console) | ✅ (CF Zero Trust Portal) | ❌ |
+| **Built-in Billing/SaaS** | ✅ (Dodo Payments) | ❌ | ❌ | ❌ |
+
+### Why Setu Instead of ngrok?
+
+Most tunneling tools charge high subscription fees for custom subdomains, wildcard certificates, and stable TCP ports. Setu provides a premium developer experience on par with commercial tools, while remaining fully open-source, free, and easy to self-host on your own infrastructure.
 
 ---
 
-## Why Setu?
+## Why Developers Choose Setu
 
-Most tunneling tools charge high subscription fees for custom subdomains, wildcard certificates, and stable TCP ports. Setu provides a developer experience on par with commercial tools, while remaining fully open-source and easy to self-host on your own infrastructure.
+* **🚀 Visual Multi-Tunnel Management**: Configure complex multi-port setups (frontend, API, database) graphically using the `setu setup` UI, and start them all concurrently with a single `setu start` command.
+* **🔍 Real-Time Traffic Inspector**: Inspect HTTP request/response headers, payloads, and parameters in real time. Modify and replay requests with a click to debug APIs and webhooks locally.
+* **🔒 Seamless Self-Hosting**: Host your gateway infrastructure on your own VPS with Docker Compose, Traefik, and wildcard SSL certificates.
+* **💻 Dedicated Developer Dashboard**: Claim subdomains, configure access keys, and view active tunnels using a modern web dashboard.
+* **🔑 Custom Subdomains**: Get persistent, predictable subdomains instead of random, changing URLs on every CLI restart.
+* **🛡️ Edge Authentication**: Guard public URLs with HTTP Basic Authentication at the gateway level before traffic even reaches your local machine.
+
+---
+
+## Core Features
+
+### Traffic Inspection
+Setu includes a built-in local dashboard running at `http://localhost:4500/inspect` where you can view detailed request/response headers, parameters, and bodies. It also allows you to **Edit & Replay** requests directly to your local server, making it perfect for webhook development.
+
+### Dashboard
+Claim free subdomains, generate access keys, and manage tunnels on a clean Web UI. It supports multiple tunnels and shows you live traffic status of active sessions.
+
+### Multi-Tunnel Management
+For microservice environments, running individual commands in separate terminal screens is annoying. With `setu setup`, you can graphically configure all your port-to-subdomain mappings. Then, use `setu start` to launch them all at once.
+
+### Advanced Self Hosting
+Setu is built to be self-hosted on your own infrastructure. Using our Docker Compose stack, you can set up a personal gateway fronted by Traefik and Coolify to issue wildcard TLS certificates (`*.yourdomain.com`) automatically via DNS-01 challenges.
+
+---
+
+## Built For
+
+Setu is optimized for speed, security, and developer convenience. Use it for:
+
+* **Webhook Testing**: Catch, inspect, and replay webhook payloads from Stripe, GitHub, Shopify, or Dodo Payments locally.
+* **OAuth Integrations**: Test third-party authentication flows (Google, GitHub, Auth0) that require valid, static HTTPS redirect URLs.
+* **Client Demos**: Instantly share a live public link of your local work-in-progress application with clients or teammates.
+* **Mobile Development**: Connect physical mobile devices or simulators directly to your local backend API server.
+* **TCP Tunneling**: Expose raw TCP sockets for remote database testing, SSH access, or gaming servers.
+
+---
+
+## Self Host in Minutes
+
+Run your own private Setu gateway infrastructure using Docker and Cloudflare. Keep your data completely internal and avoid all third-party rate limits.
+
+👉 [Jump to the Self-Hosting Guide](#-self-hosting-guide)
 
 ---
 
@@ -64,16 +112,7 @@ Most tunneling tools charge high subscription fees for custom subdomains, wildca
 
 ---
 
-## Use Cases
-
-* **Webhook Testing**: Inspect and replay Stripe, GitHub, or Dodo Payments webhook payloads locally.
-* **Client Demos**: Share a live public link to your work-in-progress codebase.
-* **Mobile Development**: Connect physical devices directly to your local backend API.
-* **OAuth Integrations**: Test third-party authentication flows that require valid redirect URLs.
-
----
-
-## Architecture
+## Architecture Overview
 
 ```text
 ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
@@ -86,7 +125,7 @@ Most tunneling tools charge high subscription fees for custom subdomains, wildca
 
 ---
 
-## Demo
+## Demo Walkthrough
 
 Watch the setup and features walkthrough on YouTube:
 
@@ -95,20 +134,6 @@ Watch the setup and features walkthrough on YouTube:
     <img src="https://img.youtube.com/vi/ncev7-qbUWU/maxresdefault.jpg" alt="Setu Demo Video" width="100%" style="max-width: 800px; border-radius: 12px; border: 1px solid #30363d; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" />
   </a>
 </div>
-
----
-
-## Try It Now
-
-Expose your first local server in seconds:
-
-```bash
-# Install Setu CLI
-curl -fsSL https://raw.githubusercontent.com/pranavwaikar/setu/main/scripts/install.sh | bash
-
-# Expose a local port
-setu expose 3000
-```
 
 ---
 
