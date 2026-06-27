@@ -4,6 +4,7 @@
   "description": "Expose local servers to the internet with secure public URLs, manage tunnels, and inspect HTTP/TCP traffic directly in VS Code.",
   "version": "0.1.0",
   "publisher": "pranavwaikar",
+  "license": "AGPL-3.0",
   "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.80.0"
