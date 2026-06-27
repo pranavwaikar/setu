@@ -64,6 +64,7 @@ jobs:
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         if: ${{ env.OVSX_PAT != '' }}
+        continue-on-error: true
         working-directory: vscode-extension
         run: npx ovsx publish -p $OVSX_PAT
 
