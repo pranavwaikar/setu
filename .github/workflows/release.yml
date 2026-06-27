@@ -65,7 +65,7 @@ jobs:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         if: ${{ env.OVSX_PAT != '' }}
         working-directory: vscode-extension
-        run: npx ovsx publish -p $OVSX_PAT --no-git-tag-version
+        run: npx ovsx publish -p $OVSX_PAT
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
