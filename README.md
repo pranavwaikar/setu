@@ -12,6 +12,8 @@
 [![Go Version](https://img.shields.io/badge/go-1.24%2B-blue?style=flat-square)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-orange?style=flat-square)](LICENSE)
 
+<img src="./demos/Setu%20wide%20resolution.gif" alt="Setu Demo" width="100%" style="max-width: 800px; border-radius: 12px; border: 1px solid #30363d; box-shadow: 0 8px 24px rgba(0,0,0,0.5); margin-top: 20px;" />
+
 </div>
 
 ```bash
@@ -81,6 +83,18 @@ Most tunneling tools charge high subscription fees for custom subdomains, wildca
                                    ▲                         │
                                    └────── Secure Tunnel ────┘
 ```
+
+---
+
+## Demo
+
+Watch the setup and features walkthrough on YouTube:
+
+<div align="center">
+  <a href="https://youtu.be/ncev7-qbUWU" target="_blank">
+    <img src="https://img.youtube.com/vi/ncev7-qbUWU/maxresdefault.jpg" alt="Setu Demo Video" width="100%" style="max-width: 800px; border-radius: 12px; border: 1px solid #30363d; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" />
+  </a>
+</div>
 
 ---
 
