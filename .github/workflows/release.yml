@@ -57,10 +57,9 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         if: ${{ env.VSCE_PAT != '' }}
+        continue-on-error: true
         working-directory: vscode-extension
-        run: |
-          node -e "const fs = require('fs'); const p = JSON.parse(fs.readFileSync('package.json', 'utf8')); p.publisher = 'helioslogic'; fs.writeFileSync('package.json', JSON.stringify(p, null, 2));"
-          npx @vscode/vsce publish -p $VSCE_PAT --no-git-tag-version
+        run: npx @vscode/vsce publish -p $VSCE_PAT --no-git-tag-version
 
       - name: Publish Extension to Open VSX Registry
         env:
@@ -68,12 +67,11 @@ jobs:
         if: ${{ env.OVSX_PAT != '' }}
         continue-on-error: true
         working-directory: vscode-extension
-        run: |
-          node -e "const fs = require('fs'); const p = JSON.parse(fs.readFileSync('package.json', 'utf8')); p.publisher = 'pranavwaikar'; fs.writeFileSync('package.json', JSON.stringify(p, null, 2));"
-          npx ovsx publish -p $OVSX_PAT
+        run: npx ovsx publish -p $OVSX_PAT
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
+        continue-on-error: true
         with:
           distribution: goreleaser
           version: latest
