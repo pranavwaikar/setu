@@ -1,5 +1,5 @@
 {
-  "name": "open-setu",
+  "name": "open-setu-tunnels",
   "displayName": "Open Setu",
   "description": "Expose local servers to the internet with secure public URLs, manage tunnels, and inspect HTTP/TCP traffic directly in VS Code.",
   "version": "0.1.0",
